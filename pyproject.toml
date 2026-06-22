@@ -1,0 +1,70 @@
+[project]
+name = "vgi-pdf"
+version = "0.1.0"
+description = "Extract PDF structure (tables, word boxes, geometry, forms, rendering) for DuckDB via VGI"
+readme = "README.md"
+keywords = [
+    "duckdb",
+    "apache-arrow",
+    "vgi",
+    "sql",
+    "pdf",
+    "tables",
+    "bounding-box",
+    "render",
+    "pdfplumber",
+    "pypdfium2",
+    "pikepdf",
+]
+license = { file = "LICENSE" }
+authors = [{ name = "Query Farm LLC", email = "hello@query.farm" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+requires-python = ">=3.13"
+dependencies = [
+    "vgi-python",
+    "pdfplumber>=0.11",
+    "pypdfium2>=4.30",
+    "pikepdf>=9",
+    "Pillow>=10",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff",
+    "mypy",
+    "reportlab>=4",
+]
+
+[tool.uv.sources]
+# Develop against the local vgi-python checkout (sibling directory). Drop or
+# override this block to resolve vgi-python from an index instead.
+vgi-python = { path = "../vgi-python" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vgi_pdf"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true

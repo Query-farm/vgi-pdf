@@ -1,0 +1,98 @@
+# name: test/sql/structure.test
+# group: [vgi_pdf]
+#
+# Core structure scalars + table functions over committed PDF fixtures:
+# page_count, pdf_metadata, tables (long format), words (boxes), pages.
+
+require-env VGI_PDF_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION '${VGI_PDF_WORKER}');
+
+# ---- page_count -------------------------------------------------------------
+
+query I
+SELECT pdf.page_count('test/sql/data/multipage.pdf');
+----
+3
+
+query I
+SELECT pdf.page_count('test/sql/data/table.pdf');
+----
+1
+
+# NULL input -> NULL output.
+query I
+SELECT pdf.page_count(NULL::VARCHAR) IS NULL;
+----
+true
+
+# ---- is_encrypted -----------------------------------------------------------
+
+query I
+SELECT pdf.is_encrypted('test/sql/data/table.pdf');
+----
+false
+
+# ---- pdf_metadata: MAP(VARCHAR, VARCHAR), Title key present -----------------
+
+query I
+SELECT pdf.pdf_metadata('test/sql/data/meta.pdf')['Title'];
+----
+Quarterly Report
+
+# ---- tables: the headline. Long-format 2x2 cells, ordered. -----------------
+
+query IIIIT rowsort
+SELECT page, table_index, "row", col, value
+FROM pdf.tables('test/sql/data/table.pdf');
+----
+1	0	0	0	Name
+1	0	0	1	Age
+1	0	1	0	Ada
+1	0	1	1	36
+
+# exactly four cells.
+query I
+SELECT count(*) FROM pdf.tables('test/sql/data/table.pdf');
+----
+4
+
+# page filter: page 2 of a 1-page doc -> no rows.
+query I
+SELECT count(*) FROM pdf.tables('test/sql/data/table.pdf', page := 2);
+----
+0
+
+# ---- words: per-word boxes, known text, valid box ordering -----------------
+
+query T
+SELECT text FROM pdf.words('test/sql/data/words.pdf') ORDER BY top, x0;
+----
+Hello
+World
+Structured
+Layout
+
+# every box has x0 < x1 and top < bottom.
+query I
+SELECT bool_and(x0 < x1 AND top < bottom) FROM pdf.words('test/sql/data/words.pdf');
+----
+true
+
+# ---- pages: geometry --------------------------------------------------------
+
+query IRRI
+SELECT page, width, height, rotation
+FROM pdf.pages('test/sql/data/multipage.pdf')
+ORDER BY page;
+----
+1	612.0	792.0	0
+2	612.0	792.0	0
+3	612.0	792.0	0
+
+statement ok
+DETACH pdf;

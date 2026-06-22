@@ -1,0 +1,60 @@
+# name: test/sql/hostile.test
+# group: [vgi_pdf]
+#
+# Hostile input survival: garbage bytes / non-PDF must never crash the worker.
+# Scalars -> NULL; table functions -> a clean DuckDB error. The worker stays up.
+
+require-env VGI_PDF_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION '${VGI_PDF_WORKER}');
+
+# garbage.pdf is not a PDF at all. Scalars degrade to NULL, never a crash.
+
+query I
+SELECT pdf.page_count('test/sql/data/garbage.pdf') IS NULL;
+----
+true
+
+query I
+SELECT pdf.is_encrypted('test/sql/data/garbage.pdf') IS NULL;
+----
+true
+
+query I
+SELECT pdf.pdf_metadata('test/sql/data/garbage.pdf') IS NULL;
+----
+true
+
+query I
+SELECT pdf.form_fields('test/sql/data/garbage.pdf') IS NULL;
+----
+true
+
+query I
+SELECT pdf.render_page('test/sql/data/garbage.pdf', 1) IS NULL;
+----
+true
+
+# A nonexistent path also degrades to NULL for scalars.
+query I
+SELECT pdf.page_count('test/sql/data/does_not_exist.pdf') IS NULL;
+----
+true
+
+# Table function over garbage surfaces a clean error (worker survives it).
+statement error
+SELECT * FROM pdf.tables('test/sql/data/garbage.pdf');
+----
+
+# Crucially: the worker is still alive and serving after the error above.
+query I
+SELECT pdf.page_count('test/sql/data/multipage.pdf');
+----
+3
+
+statement ok
+DETACH pdf;

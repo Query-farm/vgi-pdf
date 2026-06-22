@@ -1,0 +1,54 @@
+# name: test/sql/forms_render.test
+# group: [vgi_pdf]
+#
+# form_fields (AcroForm) + render_page (PNG BLOB, length + magic bytes).
+
+require-env VGI_PDF_WORKER
+
+statement ok
+LOAD vgi;
+
+statement ok
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION '${VGI_PDF_WORKER}');
+
+# ---- form_fields: AcroForm name -> value map -------------------------------
+
+query I
+SELECT pdf.form_fields('test/sql/data/form.pdf')['full_name'];
+----
+Ada Lovelace
+
+# a plain PDF has an empty form-field map (not NULL).
+query I
+SELECT cardinality(pdf.form_fields('test/sql/data/words.pdf'));
+----
+0
+
+# ---- render_page: a real PNG ------------------------------------------------
+
+# Non-empty BLOB.
+query I
+SELECT octet_length(pdf.render_page('test/sql/data/words.pdf', 1)) > 0;
+----
+true
+
+# PNG magic bytes: first 8 bytes are \x89 P N G \r \n \x1a \n.
+query I
+SELECT pdf.render_page('test/sql/data/words.pdf', 1)[1:8] = '\x89PNG\x0D\x0A\x1A\x0A'::BLOB;
+----
+true
+
+# explicit dpi overload works.
+query I
+SELECT octet_length(pdf.render_page('test/sql/data/words.pdf', 1, 72)) > 0;
+----
+true
+
+# out-of-range page -> NULL, not an error.
+query I
+SELECT pdf.render_page('test/sql/data/words.pdf', 99) IS NULL;
+----
+true
+
+statement ok
+DETACH pdf;
