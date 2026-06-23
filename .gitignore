@@ -9,4 +9,3 @@ vendor/
 duckdb_unittest_tempdir/
 *.coverage
 .coverage
-uv.lock

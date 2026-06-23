@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.13", "3.14"]
+        python-version: ["3.13","3.14"]
 
     steps:
       - uses: actions/checkout@v6
@@ -36,27 +36,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
-
-  e2e:
-    name: End-to-end SQL (haybarn-unittest)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
-
-      - name: Set up Python 3.13
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Install haybarn-unittest
-        run: uv tool install haybarn-unittest
-
-      - name: Run end-to-end SQL tests
-        run: make test-sql
 
   lint:
     name: Lint
@@ -78,3 +57,67 @@ jobs:
 
       - name: Type check (mypy)
         run: uv run mypy vgi_pdf/
+
+  # Resolve the latest published haybarn release once, so the whole matrix tests
+  # the same version (and we never hardcode/pin it).
+  resolve-haybarn:
+    name: Resolve haybarn release
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.r.outputs.release }}
+    steps:
+      - id: r
+        run: |
+          REL=$(gh release view --repo Query-farm-haybarn/haybarn --json tagName --jq .tagName)
+          echo "release=$REL" >> "$GITHUB_OUTPUT"
+          echo "Latest haybarn release: $REL"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  integration:
+    name: End-to-end SQL on ${{ matrix.os }}
+    needs: resolve-haybarn
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, asset: haybarn_unittest-linux-amd64.zip }
+          - { os: macos-latest,  asset: haybarn_unittest-osx-arm64.zip }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install the worker (from the lockfile)
+        run: uv sync --frozen --python 3.13
+
+      - name: Download haybarn-unittest
+        run: |
+          gh release download "$HAYBARN_RELEASE" \
+            --repo Query-farm-haybarn/haybarn \
+            --pattern '${{ matrix.asset }}' \
+            --output haybarn-unittest.zip --clobber
+          mkdir -p hb && unzip -o -q haybarn-unittest.zip -d hb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAYBARN_RELEASE: ${{ needs.resolve-haybarn.outputs.release }}
+
+      - name: Resolve runner + worker paths
+        run: |
+          # Absolute paths: run-integration.sh cd's into a staging dir before
+          # invoking the runner, so relative paths would not resolve.
+          UNITTEST="$PWD/$(find hb -name 'haybarn-unittest' -type f | head -1)"
+          chmod +x "$UNITTEST"
+          echo "HAYBARN_UNITTEST=$UNITTEST" >> "$GITHUB_ENV"
+          echo "VGI_PDF_WORKER=uv run --python 3.13 $PWD/pdf_worker.py" >> "$GITHUB_ENV"
+
+      - name: Run extension integration suite
+        run: ci/run-integration.sh

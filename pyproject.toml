@@ -30,7 +30,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "vgi-python",
+    "vgi-python>=0.8.3",
     "pdfplumber>=0.11",
     "pypdfium2>=4.30",
     "pikepdf>=9",
@@ -46,10 +46,6 @@ dev = [
     "reportlab>=4",
 ]
 
-[tool.uv.sources]
-# Develop against the local vgi-python checkout (sibling directory). Drop or
-# override this block to resolve vgi-python from an index instead.
-vgi-python = { path = "../vgi-python" }
 
 [build-system]
 requires = ["hatchling"]

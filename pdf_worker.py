@@ -1,16 +1,13 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python",
+#     "vgi-python>=0.8.3",
 #     "pdfplumber>=0.11",
 #     "pypdfium2>=4.30",
 #     "pikepdf>=9",
 #     "Pillow>=10",
 #     "pyarrow",
 # ]
-#
-# [tool.uv.sources]
-# vgi-python = { path = "../vgi-python" }
 # ///
 """VGI worker exposing PDF *structure* extraction to SQL.
 
