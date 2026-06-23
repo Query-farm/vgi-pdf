@@ -41,6 +41,7 @@ from typing import Any
 import pdfplumber
 import pikepdf
 import pypdfium2 as pdfium
+from pdfplumber.pdf import PDF as PdfPlumberDocument
 
 __all__ = [
     "DEFAULT_DPI",
@@ -92,6 +93,7 @@ class PdfSource:
     __slots__ = ("data", "path")
 
     def __init__(self, *, path: str | None = None, data: bytes | None = None) -> None:
+        """Initialize from a filesystem path or in-memory bytes (one of the two)."""
         self.path = path
         self.data = data
 
@@ -139,7 +141,7 @@ def _open_pikepdf(src: PdfSource) -> pikepdf.Pdf:
         raise PdfError(f"could not open PDF: {exc}") from exc
 
 
-def _open_pdfplumber(src: PdfSource) -> pdfplumber.PDF:
+def _open_pdfplumber(src: PdfSource) -> PdfPlumberDocument:
     """Open with pdfplumber (words / tables / geometry). Raises PdfError."""
     try:
         return pdfplumber.open(io.BytesIO(src.read_bytes()))

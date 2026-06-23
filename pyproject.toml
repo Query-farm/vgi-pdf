@@ -43,6 +43,7 @@ dev = [
     "pytest>=8",
     "ruff",
     "mypy",
+    "pydoclint",
     "reportlab>=4",
 ]
 
@@ -55,12 +56,36 @@ build-backend = "hatchling.build"
 packages = ["vgi_pdf"]
 
 [tool.ruff]
-line-length = 110
+line-length = 120
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "D"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pydoclint]
+style = "google"
+arg_type_hints_in_docstring = false
+check_return_types = false
+check_yield_types = false
+check_class_attributes = true
+skip_checking_raises = true
+allow_init_docstring = true
 
 [tool.mypy]
 python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pdfplumber", "pdfplumber.*"]
 ignore_missing_imports = true

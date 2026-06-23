@@ -85,6 +85,8 @@ class PageCountPathFunction(ScalarFunction):
     """``page_count(path)`` -- pages in the PDF at a filesystem path."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "page_count"
         description = "Number of pages in a PDF (VARCHAR path), or NULL if unreadable"
         categories = ["pdf", "structure"]
@@ -99,6 +101,7 @@ class PageCountPathFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.Int32Array, Returns(arrow_type=pa.int32())]:
+        """Compute the output column for a batch of input rows."""
         return _map(_sources_from_paths(pdf), core.page_count, pa.int32())
 
 
@@ -106,6 +109,8 @@ class PageCountBytesFunction(ScalarFunction):
     """``page_count(blob)`` -- pages in a PDF passed as raw bytes."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "page_count"
         description = "Number of pages in a PDF (BLOB bytes), or NULL if unreadable"
         categories = ["pdf", "structure"]
@@ -120,6 +125,7 @@ class PageCountBytesFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.Int32Array, Returns(arrow_type=pa.int32())]:
+        """Compute the output column for a batch of input rows."""
         return _map(_sources_from_bytes(pdf), core.page_count, pa.int32())
 
 
@@ -132,6 +138,8 @@ class IsEncryptedPathFunction(ScalarFunction):
     """``is_encrypted(path)`` -- True if the PDF at a path is encrypted."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "is_encrypted"
         description = "True if the PDF (VARCHAR path) is encrypted, NULL if unreadable"
         categories = ["pdf", "security"]
@@ -146,6 +154,7 @@ class IsEncryptedPathFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.BooleanArray, Returns(arrow_type=pa.bool_())]:
+        """Compute the output column for a batch of input rows."""
         return _map(_sources_from_paths(pdf), core.is_encrypted, pa.bool_())
 
 
@@ -153,6 +162,8 @@ class IsEncryptedBytesFunction(ScalarFunction):
     """``is_encrypted(blob)`` -- True if a PDF passed as bytes is encrypted."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "is_encrypted"
         description = "True if the PDF (BLOB bytes) is encrypted, NULL if unreadable"
         categories = ["pdf", "security"]
@@ -167,6 +178,7 @@ class IsEncryptedBytesFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.BooleanArray, Returns(arrow_type=pa.bool_())]:
+        """Compute the output column for a batch of input rows."""
         return _map(_sources_from_bytes(pdf), core.is_encrypted, pa.bool_())
 
 
@@ -179,6 +191,8 @@ class PdfMetadataPathFunction(ScalarFunction):
     """``pdf_metadata(path)`` -- document metadata map for a PDF at a path."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "pdf_metadata"
         description = "Document metadata (Title/Author/Producer/...) of a PDF (VARCHAR path)"
         categories = ["pdf", "metadata"]
@@ -193,6 +207,7 @@ class PdfMetadataPathFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+        """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_paths(pdf), core.pdf_metadata)
 
 
@@ -200,6 +215,8 @@ class PdfMetadataBytesFunction(ScalarFunction):
     """``pdf_metadata(blob)`` -- document metadata map for PDF bytes."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "pdf_metadata"
         description = "Document metadata (Title/Author/Producer/...) of a PDF (BLOB bytes)"
         categories = ["pdf", "metadata"]
@@ -214,6 +231,7 @@ class PdfMetadataBytesFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+        """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_bytes(pdf), core.pdf_metadata)
 
 
@@ -226,6 +244,8 @@ class FormFieldsPathFunction(ScalarFunction):
     """``form_fields(path)`` -- AcroForm field name->value map (PDF at a path)."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "form_fields"
         description = "AcroForm field name->value map of a PDF (VARCHAR path)"
         categories = ["pdf", "forms"]
@@ -240,6 +260,7 @@ class FormFieldsPathFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+        """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_paths(pdf), core.form_fields)
 
 
@@ -247,6 +268,8 @@ class FormFieldsBytesFunction(ScalarFunction):
     """``form_fields(blob)`` -- AcroForm field name->value map (PDF bytes)."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "form_fields"
         description = "AcroForm field name->value map of a PDF (BLOB bytes)"
         categories = ["pdf", "forms"]
@@ -261,6 +284,7 @@ class FormFieldsBytesFunction(ScalarFunction):
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+        """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_bytes(pdf), core.form_fields)
 
 
@@ -287,6 +311,8 @@ class RenderPagePathFunction(ScalarFunction):
     """``render_page(path, page)`` -- PNG of one page at the default DPI."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "render_page"
         description = "Render one (1-based) page of a PDF (VARCHAR path) to a PNG BLOB (default 150 DPI)"
         categories = ["pdf", "render"]
@@ -303,6 +329,7 @@ class RenderPagePathFunction(ScalarFunction):
         pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")],
         page: Annotated[pa.Int32Array, Param(doc="1-based page number.", arrow_type=pa.int32())],
     ) -> Annotated[pa.BinaryArray, Returns(arrow_type=pa.binary())]:
+        """Compute the output column for a batch of input rows."""
         return _render(_sources_from_paths(pdf), page, None)
 
 
@@ -310,6 +337,8 @@ class RenderPagePathDpiFunction(ScalarFunction):
     """``render_page(path, page, dpi)`` -- PNG of one page at a given DPI."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "render_page"
         description = "Render one page of a PDF (VARCHAR path) to a PNG BLOB at a given DPI (capped at 300)"
         categories = ["pdf", "render"]
@@ -327,6 +356,7 @@ class RenderPagePathDpiFunction(ScalarFunction):
         page: Annotated[pa.Int32Array, Param(doc="1-based page number.", arrow_type=pa.int32())],
         dpi: Annotated[int, ConstParam("Render resolution in DPI (capped at 300).", arrow_type=pa.int32())],
     ) -> Annotated[pa.BinaryArray, Returns(arrow_type=pa.binary())]:
+        """Compute the output column for a batch of input rows."""
         return _render(_sources_from_paths(pdf), page, dpi)
 
 
@@ -334,6 +364,8 @@ class RenderPageBytesFunction(ScalarFunction):
     """``render_page(blob, page)`` -- PNG of one page (PDF bytes), default DPI."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "render_page"
         description = "Render one (1-based) page of a PDF (BLOB bytes) to a PNG BLOB (default 150 DPI)"
         categories = ["pdf", "render"]
@@ -350,6 +382,7 @@ class RenderPageBytesFunction(ScalarFunction):
         pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())],
         page: Annotated[pa.Int32Array, Param(doc="1-based page number.", arrow_type=pa.int32())],
     ) -> Annotated[pa.BinaryArray, Returns(arrow_type=pa.binary())]:
+        """Compute the output column for a batch of input rows."""
         return _render(_sources_from_bytes(pdf), page, None)
 
 
@@ -357,6 +390,8 @@ class RenderPageBytesDpiFunction(ScalarFunction):
     """``render_page(blob, page, dpi)`` -- PNG of one page (bytes) at a DPI."""
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "render_page"
         description = "Render one page of a PDF (BLOB bytes) to a PNG BLOB at a given DPI (capped at 300)"
         categories = ["pdf", "render"]
@@ -374,6 +409,7 @@ class RenderPageBytesDpiFunction(ScalarFunction):
         page: Annotated[pa.Int32Array, Param(doc="1-based page number.", arrow_type=pa.int32())],
         dpi: Annotated[int, ConstParam("Render resolution in DPI (capped at 300).", arrow_type=pa.int32())],
     ) -> Annotated[pa.BinaryArray, Returns(arrow_type=pa.binary())]:
+        """Compute the output column for a batch of input rows."""
         return _render(_sources_from_bytes(pdf), page, dpi)
 
 

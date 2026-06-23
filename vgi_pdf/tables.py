@@ -104,6 +104,8 @@ class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "pages"
         description = "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path)"
         categories = ["pdf", "structure"]
@@ -116,10 +118,12 @@ class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_PagesPathArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=10, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_PagesPathArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_path(params.args.pdf)
         if src is None:
             out.finish()
@@ -135,6 +139,8 @@ class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "pages"
         description = "Per-page geometry (page, width, height, rotation) of a PDF (BLOB bytes)"
         categories = ["pdf", "structure"]
@@ -147,10 +153,12 @@ class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_PagesBytesArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=10, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_PagesBytesArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_bytes(params.args.pdf)
         if src is None:
             out.finish()
@@ -212,6 +220,8 @@ class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "words"
         description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path)"
         categories = ["pdf", "words"]
@@ -228,10 +238,12 @@ class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_WordsPathArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=500, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_WordsPathArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_path(params.args.pdf)
         if src is None:
             out.finish()
@@ -247,6 +259,8 @@ class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "words"
         description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (BLOB bytes)"
         categories = ["pdf", "words"]
@@ -259,10 +273,12 @@ class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_WordsBytesArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=500, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_WordsBytesArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_bytes(params.args.pdf)
         if src is None:
             out.finish()
@@ -325,6 +341,8 @@ class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "tables"
         description = "Long-format table cells (page, table_index, row, col, value) of a PDF (VARCHAR path)"
         categories = ["pdf", "tables"]
@@ -341,10 +359,12 @@ class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_TablesPathArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=100, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_TablesPathArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_path(params.args.pdf)
         if src is None:
             out.finish()
@@ -360,6 +380,8 @@ class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs]):
     FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
 
     class Meta:
+        """Function metadata (name, description, examples)."""
+
         name = "tables"
         description = "Long-format table cells (page, table_index, row, col, value) of a PDF (BLOB bytes)"
         categories = ["pdf", "tables"]
@@ -372,10 +394,12 @@ class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs]):
 
     @classmethod
     def cardinality(cls, params: BindParams[_TablesBytesArgs]) -> TableCardinality:
+        """Return the estimated output cardinality."""
         return TableCardinality(estimate=100, max=None)
 
     @classmethod
     def process(cls, params: ProcessParams[_TablesBytesArgs], state: None, out: OutputCollector) -> None:
+        """Emit output rows for the bound PDF input."""
         src = PdfSource.from_bytes(params.args.pdf)
         if src is None:
             out.finish()
