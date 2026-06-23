@@ -4,7 +4,9 @@
 
 <p align="center"><em>A <a href="https://query.farm">Query.Farm</a> VGI worker for DuckDB.</em></p>
 
-# vgi-pdf
+# Extract PDF Tables, Word Boxes, Form Fields & Page Renders in DuckDB
+
+> **vgi-pdf** · a [Query.Farm](https://query.farm) VGI worker · powered by pdfplumber
 
 [![CI](https://github.com/Query-farm/vgi-pdf/actions/workflows/ci.yml/badge.svg)](https://github.com/Query-farm/vgi-pdf/actions/workflows/ci.yml)
 
