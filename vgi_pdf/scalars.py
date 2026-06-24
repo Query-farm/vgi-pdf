@@ -43,6 +43,167 @@ from vgi.scalar_function import ScalarFunction
 
 from . import core
 from .core import PdfSource
+from .meta import object_tags
+
+# ---------------------------------------------------------------------------
+# Per-object discovery/description tags (VGI112/113/124/126/128).
+#
+# A path overload and a bytes overload of the same function share one
+# ``Meta.name`` and therefore collapse to a single catalog object, so both
+# overloads carry the SAME tag dict (the linter sees one ``pdf.main.<name>``).
+# Each ``vgi.doc_llm`` / ``vgi.doc_md`` pair is DISTINCT narrative content.
+# ---------------------------------------------------------------------------
+
+_SRC = "vgi_pdf/scalars.py"
+
+_PAGE_COUNT_TAGS = object_tags(
+    title="Count PDF Pages",
+    doc_llm=(
+        "# page_count\n\n"
+        "Return the **number of pages** in a PDF as an `INTEGER`. The `pdf` argument is either a "
+        "`VARCHAR` filesystem path the worker opens or a `BLOB` of the raw PDF bytes.\n\n"
+        "Use it to size a document before paging through `pages`, `words`, or `tables`, to validate "
+        "an upload, or to drive a `generate_series(1, page_count(...))` loop over `render_page`.\n\n"
+        "**Edge cases:** a NULL input returns NULL; a malformed, encrypted-beyond-reading, or "
+        "otherwise unreadable PDF also returns NULL rather than raising -- this scalar never throws "
+        "and never hangs."
+    ),
+    doc_md=(
+        "# Count PDF Pages\n\n"
+        "Counts the pages in a PDF document.\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "SELECT pdf.page_count('report.pdf');        -- 12\n"
+        "SELECT pdf.page_count(blob) FROM uploads;   -- per-row page counts\n"
+        "```\n\n"
+        "Accepts a `VARCHAR` path or a `BLOB` of bytes and returns an `INTEGER`.\n\n"
+        "## Notes\n\n"
+        "Returns `NULL` for a NULL input or a PDF that cannot be read. Useful for sizing a document "
+        "ahead of the `pages`, `words`, and `tables` table functions."
+    ),
+    keywords="page count, number of pages, pages, count, length, size, npages, pdf",
+    relative_path=_SRC,
+)
+
+_IS_ENCRYPTED_TAGS = object_tags(
+    title="Detect PDF Encryption",
+    doc_llm=(
+        "# is_encrypted\n\n"
+        "Return `TRUE` if the PDF is **encrypted** (password/permissions protected), `FALSE` if it is "
+        "plain, or `NULL` if the bytes are not a readable PDF at all. The `pdf` argument is a `VARCHAR` "
+        "path or a `BLOB` of bytes.\n\n"
+        "Use it to triage a batch of documents before processing -- encrypted files cannot be parsed "
+        "for words/tables/metadata without a password.\n\n"
+        "**Key behavior:** an encrypted-with-no-password file is reported as `TRUE` (encryption is a "
+        "*successful* answer, not an error); the function never attempts to brute-force a password and "
+        "never hangs. NULL input yields NULL."
+    ),
+    doc_md=(
+        "# Detect PDF Encryption\n\n"
+        "Reports whether a PDF is encrypted.\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "SELECT pdf.is_encrypted('secret.pdf');   -- true\n"
+        "SELECT pdf.is_encrypted(blob) FROM uploads WHERE pdf.is_encrypted(blob);\n"
+        "```\n\n"
+        "Returns a `BOOLEAN`; accepts a `VARCHAR` path or a `BLOB`.\n\n"
+        "## Notes\n\n"
+        "`TRUE` means the document is password/permissions protected. `NULL` means the input was not a "
+        "readable PDF. Detection is purely structural -- no password guessing is performed."
+    ),
+    keywords="encrypted, encryption, password, protected, security, locked, acroform, permissions",
+    relative_path=_SRC,
+)
+
+_PDF_METADATA_TAGS = object_tags(
+    title="Read PDF Document Metadata",
+    doc_llm=(
+        "# pdf_metadata\n\n"
+        "Return the PDF's **document information dictionary** as a `MAP(VARCHAR, VARCHAR)` -- keys such "
+        "as `Title`, `Author`, `Subject`, `Creator`, `Producer`, `CreationDate`, and `ModDate`. The "
+        "`pdf` argument is a `VARCHAR` path or a `BLOB`.\n\n"
+        "Index a single field with `pdf_metadata(...)['Title']`, or expand the whole map with "
+        "`UNNEST(map_entries(...))`. Use it to catalog documents, sort by author, or extract titles.\n\n"
+        "**Edge cases:** keys present depend on the producer (any subset may be missing); a NULL input "
+        "or an unreadable PDF returns NULL. Never raises."
+    ),
+    doc_md=(
+        "# Read PDF Document Metadata\n\n"
+        "Extracts the document information dictionary (Title, Author, Producer, dates, ...).\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "SELECT pdf.pdf_metadata('report.pdf')['Title'];\n"
+        "SELECT key, value FROM (SELECT UNNEST(map_entries(pdf.pdf_metadata('report.pdf'))));\n"
+        "```\n\n"
+        "Returns a `MAP(VARCHAR, VARCHAR)`; accepts a `VARCHAR` path or a `BLOB`.\n\n"
+        "## Notes\n\n"
+        "Available keys vary by the tool that produced the PDF. Returns `NULL` for a NULL input or an "
+        "unreadable document."
+    ),
+    keywords="metadata, document info, title, author, producer, creator, subject, creation date, properties",
+    relative_path=_SRC,
+)
+
+_FORM_FIELDS_TAGS = object_tags(
+    title="Extract PDF Form Fields",
+    doc_llm=(
+        "# form_fields\n\n"
+        "Return the values of an **AcroForm** (fillable PDF form) as a `MAP(VARCHAR, VARCHAR)` mapping "
+        "each field's fully-qualified name to its current value. The `pdf` argument is a `VARCHAR` path "
+        "or a `BLOB`.\n\n"
+        "Use it to read submitted form data -- applications, invoices, government forms -- straight "
+        "into SQL, then pivot fields into columns with `['field_name']` lookups.\n\n"
+        "**Edge cases:** a document with no AcroForm yields an empty map; checkbox/radio values are the "
+        "export value strings; a NULL input or unreadable PDF returns NULL. Never raises."
+    ),
+    doc_md=(
+        "# Extract PDF Form Fields\n\n"
+        "Reads filled-in AcroForm field values from a fillable PDF.\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "SELECT pdf.form_fields('application.pdf');\n"
+        "SELECT pdf.form_fields('application.pdf')['applicant_name'];\n"
+        "```\n\n"
+        "Returns a `MAP(VARCHAR, VARCHAR)` of field name to value; accepts a `VARCHAR` path or a "
+        "`BLOB`.\n\n"
+        "## Notes\n\n"
+        "A PDF without a form returns an empty map. Returns `NULL` for a NULL input or an unreadable "
+        "document."
+    ),
+    keywords="form, form fields, acroform, fillable, fields, inputs, checkbox, submission, values",
+    relative_path=_SRC,
+)
+
+_RENDER_PAGE_TAGS = object_tags(
+    title="Render PDF Page to Image",
+    doc_llm=(
+        "# render_page\n\n"
+        "Rasterize **one (1-based) page** of a PDF to a **PNG image** returned as a `BLOB`. Signature "
+        "`render_page(pdf, page[, dpi])`: `pdf` is a `VARCHAR` path or a `BLOB`, `page` is the 1-based "
+        "page number, and the optional `dpi` sets the resolution (default 150, capped at 300).\n\n"
+        "Use it to thumbnail PDFs, preview a page, or feed a page image to a vision model.\n\n"
+        "**Bounds & edge cases:** the output bitmap area is capped (an enormous page renders at reduced "
+        "scale rather than exhausting memory); a NULL input, NULL page, out-of-range page, or "
+        "unreadable PDF returns NULL. Never raises and never OOMs."
+    ),
+    doc_md=(
+        "# Render PDF Page to Image\n\n"
+        "Renders a single PDF page to a PNG image.\n\n"
+        "## Usage\n\n"
+        "```sql\n"
+        "SELECT pdf.render_page('doc.pdf', 1);        -- first page at 150 DPI\n"
+        "SELECT pdf.render_page('doc.pdf', 1, 72);    -- first page at 72 DPI\n"
+        "```\n\n"
+        "Returns a PNG `BLOB`. `page` is 1-based; `dpi` defaults to 150 and is capped at 300. Accepts a "
+        "`VARCHAR` path or a `BLOB`.\n\n"
+        "## Notes\n\n"
+        "The rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL "
+        "input, an out-of-range page, or an unreadable document."
+    ),
+    keywords="render, render page, png, image, rasterize, thumbnail, preview, screenshot, dpi, bitmap",
+    relative_path=_SRC,
+)
+
 
 # ---------------------------------------------------------------------------
 # Mapping helpers: apply a pure ``PdfSource -> X`` function across an input
@@ -90,6 +251,7 @@ class PageCountPathFunction(ScalarFunction):
         name = "page_count"
         description = "Number of pages in a PDF (VARCHAR path), or NULL if unreadable"
         categories = ["pdf", "structure"]
+        tags = _PAGE_COUNT_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.page_count('doc.pdf')",
@@ -114,10 +276,11 @@ class PageCountBytesFunction(ScalarFunction):
         name = "page_count"
         description = "Number of pages in a PDF (BLOB bytes), or NULL if unreadable"
         categories = ["pdf", "structure"]
+        tags = _PAGE_COUNT_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.page_count(blob) FROM uploads",
-                description="Page count of a PDF held as bytes",
+                sql="SELECT pdf.page_count('not-a-pdf'::BLOB)",
+                description="Page count of a PDF held as bytes (NULL for non-PDF bytes)",
             ),
         ]
 
@@ -143,6 +306,7 @@ class IsEncryptedPathFunction(ScalarFunction):
         name = "is_encrypted"
         description = "True if the PDF (VARCHAR path) is encrypted, NULL if unreadable"
         categories = ["pdf", "security"]
+        tags = _IS_ENCRYPTED_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.is_encrypted('secret.pdf')",
@@ -167,10 +331,11 @@ class IsEncryptedBytesFunction(ScalarFunction):
         name = "is_encrypted"
         description = "True if the PDF (BLOB bytes) is encrypted, NULL if unreadable"
         categories = ["pdf", "security"]
+        tags = _IS_ENCRYPTED_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.is_encrypted(blob) FROM uploads",
-                description="Whether a PDF held as bytes is encrypted",
+                sql="SELECT pdf.is_encrypted('not-a-pdf'::BLOB)",
+                description="Whether a PDF held as bytes is encrypted (NULL for non-PDF bytes)",
             ),
         ]
 
@@ -196,6 +361,7 @@ class PdfMetadataPathFunction(ScalarFunction):
         name = "pdf_metadata"
         description = "Document metadata (Title/Author/Producer/...) of a PDF (VARCHAR path)"
         categories = ["pdf", "metadata"]
+        tags = _PDF_METADATA_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.pdf_metadata('doc.pdf')['Title']",
@@ -220,10 +386,11 @@ class PdfMetadataBytesFunction(ScalarFunction):
         name = "pdf_metadata"
         description = "Document metadata (Title/Author/Producer/...) of a PDF (BLOB bytes)"
         categories = ["pdf", "metadata"]
+        tags = _PDF_METADATA_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.pdf_metadata(blob)['Author'] FROM uploads",
-                description="Author from PDF bytes' metadata",
+                sql="SELECT pdf.pdf_metadata('not-a-pdf'::BLOB)['Author']",
+                description="Author from PDF bytes' metadata (NULL for non-PDF bytes)",
             ),
         ]
 
@@ -249,6 +416,7 @@ class FormFieldsPathFunction(ScalarFunction):
         name = "form_fields"
         description = "AcroForm field name->value map of a PDF (VARCHAR path)"
         categories = ["pdf", "forms"]
+        tags = _FORM_FIELDS_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.form_fields('form.pdf')",
@@ -273,10 +441,11 @@ class FormFieldsBytesFunction(ScalarFunction):
         name = "form_fields"
         description = "AcroForm field name->value map of a PDF (BLOB bytes)"
         categories = ["pdf", "forms"]
+        tags = _FORM_FIELDS_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.form_fields(blob) FROM uploads",
-                description="Form fields of a fillable PDF held as bytes",
+                sql="SELECT pdf.form_fields('not-a-pdf'::BLOB)",
+                description="Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)",
             ),
         ]
 
@@ -316,6 +485,7 @@ class RenderPagePathFunction(ScalarFunction):
         name = "render_page"
         description = "Render one (1-based) page of a PDF (VARCHAR path) to a PNG BLOB (default 150 DPI)"
         categories = ["pdf", "render"]
+        tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.render_page('doc.pdf', 1)",
@@ -342,6 +512,7 @@ class RenderPagePathDpiFunction(ScalarFunction):
         name = "render_page"
         description = "Render one page of a PDF (VARCHAR path) to a PNG BLOB at a given DPI (capped at 300)"
         categories = ["pdf", "render"]
+        tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT pdf.render_page('doc.pdf', 1, 72)",
@@ -369,10 +540,11 @@ class RenderPageBytesFunction(ScalarFunction):
         name = "render_page"
         description = "Render one (1-based) page of a PDF (BLOB bytes) to a PNG BLOB (default 150 DPI)"
         categories = ["pdf", "render"]
+        tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.render_page(blob, 1) FROM uploads",
-                description="Render the first page of PDF bytes to a PNG",
+                sql="SELECT pdf.render_page('not-a-pdf'::BLOB, 1)",
+                description="Render the first page of PDF bytes to a PNG (NULL for non-PDF bytes)",
             ),
         ]
 
@@ -395,10 +567,11 @@ class RenderPageBytesDpiFunction(ScalarFunction):
         name = "render_page"
         description = "Render one page of a PDF (BLOB bytes) to a PNG BLOB at a given DPI (capped at 300)"
         categories = ["pdf", "render"]
+        tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.render_page(blob, 1, 72) FROM uploads",
-                description="Render the first page of PDF bytes at 72 DPI",
+                sql="SELECT pdf.render_page('not-a-pdf'::BLOB, 1, 72)",
+                description="Render the first page of PDF bytes at 72 DPI (NULL for non-PDF bytes)",
             ),
         ]
 

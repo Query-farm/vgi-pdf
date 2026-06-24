@@ -51,7 +51,10 @@ from vgi_rpc.rpc import OutputCollector
 
 from . import core
 from .core import PdfSource
+from .meta import object_tags
 from .schema_utils import field
+
+_SRC = "vgi_pdf/tables.py"
 
 # ---------------------------------------------------------------------------
 # Externalized scan cursor (HTTP-continuation fix)
@@ -215,6 +218,40 @@ _PAGES_COLUMNS_MD = (
     "| `rotation` | INTEGER | Page rotation in degrees (0/90/180/270). |"
 )
 
+_PAGES_TAGS = {
+    **object_tags(
+        title="List PDF Page Geometry",
+        doc_llm=(
+            "# pages\n\n"
+            "Table function returning **one row per page** of a PDF with its physical geometry: "
+            "`page` (1-based), `width` and `height` in PDF points (1 pt = 1/72 inch), and `rotation` in "
+            "degrees. Call by keyword: `pages(pdf := '...')`, where `pdf` is a `VARCHAR` path or a "
+            "`BLOB` of raw bytes.\n\n"
+            "Use it to learn how many pages a document has and each page's size/orientation -- e.g. to "
+            "detect landscape vs portrait pages, find oversized pages, or drive per-page rendering.\n\n"
+            "**Edge cases:** a NULL `pdf` is rejected with a clean argument error; an unreadable/"
+            "encrypted PDF surfaces a clean DuckDB error (not a crash). Output streams in bounded "
+            "slices so even very large documents page safely over every transport."
+        ),
+        doc_md=(
+            "# List PDF Page Geometry\n\n"
+            "Returns the geometry of every page in a PDF, one row per page.\n\n"
+            "## Usage\n\n"
+            "```sql\n"
+            "SELECT * FROM pdf.pages(pdf := 'report.pdf');\n"
+            "SELECT page, width, height FROM pdf.pages(pdf := 'report.pdf') WHERE width > height;\n"
+            "```\n\n"
+            "## Columns\n\n" + _PAGES_COLUMNS_MD + "\n\n"
+            "## Notes\n\n"
+            "Dimensions are in PDF points (1/72 inch). Call the function by keyword (`pdf := ...`). A "
+            "NULL `pdf` raises an argument error; an unreadable document raises a clean error."
+        ),
+        keywords="pages, page geometry, page size, dimensions, width, height, rotation, orientation, landscape",
+        relative_path=_SRC,
+    ),
+    "vgi.result_columns_md": _PAGES_COLUMNS_MD,
+}
+
 
 def _build_pages(src: PdfSource, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.pages(src)
@@ -242,7 +279,7 @@ class PagesFunction(TableFunctionGenerator[_PagesArgs, ScanState]):
         name = "pages"
         description = "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "structure"]
-        tags = {"vgi.columns_md": _PAGES_COLUMNS_MD}
+        tags = _PAGES_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT * FROM pdf.pages(pdf := 'doc.pdf')",
@@ -306,6 +343,62 @@ _WORDS_COLUMNS_MD = (
     "| `bottom` | DOUBLE | Bottom edge, in PDF points from the top. |"
 )
 
+# VGI509 guaranteed-runnable examples (these are actually EXECUTED by the
+# linter). Each `sql` is catalog-qualified and self-contained, driving the
+# committed test fixtures by VARCHAR path relative to the worker's cwd. We omit
+# `expected_result` deliberately -- the linter only needs each query to run.
+_WORDS_EXECUTABLE_EXAMPLES = (
+    "["
+    '{"description": "Extract every word box from a small fixture PDF.",'
+    ' "sql": "SELECT page, text, x0, top FROM pdf.main.words(pdf := \'test/sql/data/words.pdf\')'
+    ' ORDER BY top, x0 LIMIT 5"},'
+    '{"description": "Restrict word boxes to a single page.",'
+    ' "sql": "SELECT count(*) AS n FROM pdf.main.words(pdf := \'test/sql/data/words.pdf\', page := 1)"},'
+    '{"description": "List page geometry for a multi-page PDF.",'
+    ' "sql": "SELECT page, width, height, rotation FROM pdf.main.pages(pdf := \'test/sql/data/multipage.pdf\')'
+    ' ORDER BY page"},'
+    '{"description": "Pull table cells in long format from a PDF that contains a table.",'
+    ' "sql": "SELECT page, table_index, \\"row\\", col, value FROM pdf.main.tables(pdf := \'test/sql/data/table.pdf\')'
+    ' ORDER BY page, table_index, \\"row\\", col LIMIT 8"}'
+    "]"
+)
+
+_WORDS_TAGS = {
+    **object_tags(
+        title="Extract PDF Word Boxes",
+        doc_llm=(
+            "# words\n\n"
+            "Table function returning **one row per word** in a PDF, with each word's text and its "
+            "bounding box: `page` (1-based), `text`, and the box edges `x0`/`top`/`x1`/`bottom` in PDF "
+            "points (origin at the top-left). Call by keyword: `words(pdf := '...')`, with the optional "
+            "`page := N` filter to restrict to one page. `pdf` is a `VARCHAR` path or a `BLOB`.\n\n"
+            "Use it to locate text by coordinate, reconstruct reading order (`ORDER BY top, x0`), find "
+            "where a keyword appears on a page, or build a spatial layout index.\n\n"
+            "**Edge cases:** a scanned/image-only page yields no words; a NULL `pdf` raises a clean "
+            "argument error; an unreadable PDF raises a clean DuckDB error. Output streams in bounded "
+            "slices, so pages with thousands of words page safely over every transport."
+        ),
+        doc_md=(
+            "# Extract PDF Word Boxes\n\n"
+            "Returns every word in a PDF together with its bounding box, one row per word.\n\n"
+            "## Usage\n\n"
+            "```sql\n"
+            "SELECT * FROM pdf.words(pdf := 'doc.pdf') ORDER BY page, top, x0;\n"
+            "SELECT * FROM pdf.words(pdf := 'doc.pdf', page := 1);\n"
+            "```\n\n"
+            "## Columns\n\n" + _WORDS_COLUMNS_MD + "\n\n"
+            "## Notes\n\n"
+            "Coordinates are in PDF points with the origin at the top-left. Image-only (scanned) pages "
+            "produce no words -- this reads the text layer, it does not OCR. Call by keyword "
+            "(`pdf := ...`, optional `page := N`)."
+        ),
+        keywords="words, word boxes, bounding box, coordinates, text position, layout, x0, top, reading order",
+        relative_path=_SRC,
+    ),
+    "vgi.result_columns_md": _WORDS_COLUMNS_MD,
+    "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
+}
+
 
 def _build_words(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.words(src, page)
@@ -335,7 +428,7 @@ class WordsFunction(TableFunctionGenerator[_WordsArgs, ScanState]):
         name = "words"
         description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "words"]
-        tags = {"vgi.columns_md": _WORDS_COLUMNS_MD}
+        tags = _WORDS_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT * FROM pdf.words(pdf := 'doc.pdf') ORDER BY page, top, x0",
@@ -404,6 +497,43 @@ _TABLES_COLUMNS_MD = (
     "| `value` | VARCHAR | Cell text (NULL for an empty/missing cell). |"
 )
 
+_TABLES_TAGS = {
+    **object_tags(
+        title="Extract PDF Table Cells",
+        doc_llm=(
+            "# tables\n\n"
+            "Table function that detects tables in a PDF and returns them in **long (tidy) format -- "
+            "one row per cell**: `page` (1-based), `table_index` (0-based ordinal of the table on the "
+            "page), `row` and `col` (0-based indices within the table), and `value` (the cell text, "
+            "NULL when empty). Call by keyword: `tables(pdf := '...')`, with the optional `page := N` "
+            "filter. `pdf` is a `VARCHAR` path or a `BLOB`.\n\n"
+            "Use it to mine numeric/tabular data out of reports and statements. Pivot back to a grid "
+            "with conditional aggregation on `row`/`col`, or filter a single table with "
+            "`table_index`.\n\n"
+            '**Gotcha:** `row` is a SQL keyword -- quote it as `"row"`. **Edge cases:** a page with no '
+            "detectable table contributes no rows; a NULL `pdf` raises a clean argument error; an "
+            "unreadable PDF raises a clean DuckDB error. Output streams in bounded slices."
+        ),
+        doc_md=(
+            "# Extract PDF Table Cells\n\n"
+            "Detects tables in a PDF and returns their cells in long (one-row-per-cell) format.\n\n"
+            "## Usage\n\n"
+            "```sql\n"
+            'SELECT page, table_index, "row", col, value\n'
+            "FROM pdf.tables(pdf := 'report.pdf')\n"
+            'ORDER BY page, table_index, "row", col;\n'
+            "```\n\n"
+            "## Columns\n\n" + _TABLES_COLUMNS_MD + "\n\n"
+            "## Notes\n\n"
+            'The `row` column is a SQL keyword -- quote it as `"row"`. Pages without a detectable table '
+            "produce no rows. Call by keyword (`pdf := ...`, optional `page := N`)."
+        ),
+        keywords="tables, table cells, extract table, tabular, cells, rows, columns, long format, grid, spreadsheet",
+        relative_path=_SRC,
+    ),
+    "vgi.result_columns_md": _TABLES_COLUMNS_MD,
+}
+
 
 def _build_tables(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.tables(src, page)
@@ -434,7 +564,7 @@ class TablesFunction(TableFunctionGenerator[_TablesArgs, ScanState]):
             "Long-format table cells (page, table_index, row, col, value) of a PDF (VARCHAR path or BLOB bytes)"
         )
         categories = ["pdf", "tables"]
-        tags = {"vgi.columns_md": _TABLES_COLUMNS_MD}
+        tags = _TABLES_TAGS
         examples = [
             FunctionExample(
                 sql="SELECT * FROM pdf.tables(pdf := 'report.pdf') ORDER BY page, table_index, row, col",

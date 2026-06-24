@@ -83,9 +83,33 @@ _SCHEMA_DESCRIPTION_MD = (
 
 _REPO_URL = "https://github.com/Query-farm/vgi-pdf"
 
+_CATALOG_KEYWORDS = (
+    "pdf, document, structure, layout, tables, words, bounding box, page count, render, png, "
+    "metadata, form fields, acroform, encryption, coordinates, geometry"
+)
+
+_SCHEMA_KEYWORDS = (
+    "pdf, page_count, is_encrypted, pdf_metadata, form_fields, render_page, tables, words, pages, "
+    "structure, layout, word boxes, geometry, forms, metadata, rendering"
+)
+
+# VGI506 representative, catalog-qualified example queries for the schema.
+_SCHEMA_EXAMPLE_QUERIES = (
+    "SELECT pdf.main.page_count('report.pdf');\n"
+    "SELECT pdf.main.is_encrypted('secret.pdf');\n"
+    "SELECT pdf.main.pdf_metadata('report.pdf')['Title'];\n"
+    "SELECT pdf.main.form_fields('application.pdf');\n"
+    "SELECT pdf.main.render_page('report.pdf', 1);\n"
+    "SELECT * FROM pdf.main.pages(pdf := 'report.pdf');\n"
+    "SELECT * FROM pdf.main.words(pdf := 'report.pdf') ORDER BY page, top, x0;\n"
+    "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'report.pdf');"
+)
+
 _CATALOG_TAGS = {
-    "vgi.description_llm": _CATALOG_DESCRIPTION_LLM,
-    "vgi.description_md": _CATALOG_DESCRIPTION_MD,
+    "vgi.title": "PDF Structure & Rendering",
+    "vgi.keywords": _CATALOG_KEYWORDS,
+    "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
+    "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
     "vgi.author": "Query.Farm",
     "vgi.copyright": "Copyright 2026 Query Farm LLC - https://query.farm",
     "vgi.license": "MIT",
@@ -94,8 +118,16 @@ _CATALOG_TAGS = {
 }
 
 _SCHEMA_TAGS = {
-    "vgi.description_llm": _SCHEMA_DESCRIPTION_LLM,
-    "vgi.description_md": _SCHEMA_DESCRIPTION_MD,
+    "vgi.title": "PDF — main",
+    "vgi.keywords": _SCHEMA_KEYWORDS,
+    # VGI123 classifying tags use BARE keys (not vgi.-namespaced) for faceting.
+    "domain": "documents",
+    "category": "parsing",
+    "topic": "pdf-structure-extraction",
+    "vgi.source_url": f"{_REPO_URL}/blob/main/pdf_worker.py",
+    "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
+    "vgi.doc_llm": _SCHEMA_DESCRIPTION_LLM,
+    "vgi.doc_md": _SCHEMA_DESCRIPTION_MD,
 }
 
 _PDF_CATALOG = Catalog(
