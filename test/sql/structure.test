@@ -83,6 +83,31 @@ SELECT bool_and(x0 < x1 AND top < bottom) FROM pdf.words('test/sql/data/words.pd
 ----
 true
 
+# ---- words: HTTP-continuation paging guard ----------------------------------
+# manywords.pdf has 200 words (> ROWS_PER_TICK = 64), so the scan must page
+# across the limit-1 continuation boundary. Over the http transport this only
+# terminates (and returns the full count) if the externalized scan cursor
+# survives the round-trip; the old emit-all + state:None code would loop forever.
+
+query I
+SELECT count(*) FROM pdf.words('test/sql/data/manywords.pdf');
+----
+200
+
+# ordered head: words laid out in reading order recover the original sequence.
+query T
+SELECT text FROM pdf.words('test/sql/data/manywords.pdf') ORDER BY top, x0 LIMIT 3;
+----
+w0000
+w0001
+w0002
+
+# distinct words == total rows: every word emitted exactly once (no dupes).
+query I
+SELECT count(DISTINCT text) FROM pdf.words('test/sql/data/manywords.pdf');
+----
+200
+
 # ---- pages: geometry --------------------------------------------------------
 
 query IRRI

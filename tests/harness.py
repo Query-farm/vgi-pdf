@@ -54,8 +54,17 @@ def invoke_table_function(
     *,
     named: dict[str, pa.Scalar] | None = None,
     positional: tuple[pa.Scalar, ...] = (),
+    serialize_state: bool = False,
 ) -> pa.Table:
-    """Run a (source) table function through bind -> init -> process -> table."""
+    """Run a (source) table function through bind -> init -> process -> table.
+
+    When ``serialize_state`` is True, the scan state is round-tripped through its
+    Arrow serialization between every ``process`` tick -- mimicking the stateless
+    HTTP transport, which wire-serializes the continuation state after each tick
+    and resumes by deserializing it. This proves the cursor survives batch
+    boundaries (the old emit-all + ``state: None`` code loops forever here). A
+    1000-tick guard turns an infinite loop into a clean failure instead of a hang.
+    """
     args = Arguments(positional=positional, named=named or {})
 
     bind_req = BindRequest(
@@ -80,9 +89,17 @@ def invoke_table_function(
     )
 
     state = func_cls.initial_state(params)
+    state_type = type(state) if state is not None else None
     out = MockOutputCollector(bind_resp.output_schema)
 
+    guard = 0
     while not out.finished:
+        guard += 1
+        if guard > 1000:
+            raise AssertionError("process did not finish within 1000 ticks")
         func_cls.process(params, state, out)
+        if serialize_state and state is not None and state_type is not None:
+            # Round-trip the state exactly as the HTTP transport would per tick.
+            state = state_type.deserialize_from_bytes(state.serialize_to_bytes())
 
     return pa.Table.from_batches(out.batches, schema=bind_resp.output_schema)

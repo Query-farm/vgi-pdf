@@ -8,7 +8,9 @@ BLOB bytes and exercising the optional ``page`` named filter.
 from __future__ import annotations
 
 import pyarrow as pa
+import pytest
 
+from vgi_pdf import tables as tables_mod
 from vgi_pdf.tables import (
     PagesBytesFunction,
     TablesBytesFunction,
@@ -68,3 +70,99 @@ class TestPages:
         assert table.column("page").to_pylist() == [1, 2, 3]
         assert table.column("width").to_pylist() == [612.0, 612.0, 612.0]
         assert table.column("height").to_pylist() == [792.0, 792.0, 792.0]
+
+
+class TestScanStateRoundTrip:
+    """The HTTP-continuation regression guard.
+
+    A ``words`` result that exceeds ``ROWS_PER_TICK`` must page across the
+    stateless-transport limit-1 continuation boundary. Re-serializing the scan
+    state between every ``process`` tick reproduces what the HTTP transport does
+    on the wire. On the old emit-all + ``state: None`` code this loops forever
+    (re-reading the PDF and re-emitting row 0 each resume) and trips the harness
+    1000-tick guard; on the cursor code it terminates with identical rows.
+    """
+
+    def test_words_identical_with_and_without_serialization(self) -> None:
+        # > ROWS_PER_TICK (64) words so the scan spans several ticks.
+        pdf = fx.make_many_words_pdf(200)
+        plain = invoke_table_function(WordsBytesFunction, positional=(_blob(pdf),))
+        rt = invoke_table_function(
+            WordsBytesFunction,
+            positional=(_blob(pdf),),
+            serialize_state=True,
+        )
+        assert plain.num_rows > tables_mod.ROWS_PER_TICK
+        # Identical rows, identical order -- no dupes, no drops, full termination.
+        assert rt.num_rows == plain.num_rows
+        assert rt.to_pylist() == plain.to_pylist()
+        # Each emitted word appears exactly once.
+        texts = rt.column("text").to_pylist()
+        assert len(texts) == len(set(texts))
+
+    def test_words_chunks_bounded(self) -> None:
+        # Drive the lifecycle directly to inspect per-tick emit sizes: no batch
+        # may exceed ROWS_PER_TICK, and every word survives exactly once.
+        from vgi.arguments import Arguments
+        from vgi.function_storage import BoundStorage, FunctionStorageSqlite
+        from vgi.invocation import FunctionType
+        from vgi.protocol import BindRequest, InitRequest
+        from vgi.table_function import ProcessParams
+
+        from .harness import MockOutputCollector
+
+        func = WordsBytesFunction
+        pdf = fx.make_many_words_pdf(200)
+        args = Arguments(positional=(_blob(pdf),), named={})
+        bind_req = BindRequest(function_name=func.Meta.name, arguments=args, function_type=FunctionType.TABLE)
+        bind_resp = func.bind(bind_req)
+        init_req = InitRequest(bind_call=bind_req, output_schema=bind_resp.output_schema)
+        init_resp = func.global_init(init_req)
+        params = ProcessParams(
+            args=func._parse_arguments(func.FunctionArguments, args),
+            init_call=init_req,
+            init_response=init_resp,
+            output_schema=bind_resp.output_schema,
+            settings={},
+            secrets={},
+            storage=BoundStorage(FunctionStorageSqlite(":memory:"), init_resp.execution_id),
+        )
+        state = func.initial_state(params)
+        out = MockOutputCollector(bind_resp.output_schema)
+        while not out.finished:
+            func.process(params, state, out)
+            state = type(state).deserialize_from_bytes(state.serialize_to_bytes())
+        assert len(out.batches) >= 2  # genuinely paged
+        for b in out.batches:
+            assert b.num_rows <= tables_mod.ROWS_PER_TICK
+
+
+class TestCursorSurvivesContinuation:
+    """``tables`` (one row per cell) also pages across the continuation boundary."""
+
+    def test_tables_identical_with_serialization(self) -> None:
+        pdf = fx.make_table_pdf()
+        plain = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),))
+        rt = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),), serialize_state=True)
+        assert rt.to_pylist() == plain.to_pylist()
+
+    def test_small_chunk_spans_batches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Force ROWS_PER_TICK tiny so the 4-cell table genuinely spans batches,
+        # then prove the cursor round-trips correctly across each one.
+        monkeypatch.setattr(tables_mod, "ROWS_PER_TICK", 2)
+        pdf = fx.make_table_pdf()
+        plain = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),))
+        rt = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),), serialize_state=True)
+        assert plain.num_rows == 4
+        assert rt.num_rows == 4
+        assert rt.to_pylist() == plain.to_pylist()
+
+    def test_empty_result_terminates(self) -> None:
+        # Page filter selecting a non-existent page -> 0 rows; must still finish.
+        rt = invoke_table_function(
+            TablesBytesFunction,
+            positional=(_blob(fx.make_table_pdf()),),
+            named={"page": pa.scalar(2, type=pa.int32())},
+            serialize_state=True,
+        )
+        assert rt.num_rows == 0
