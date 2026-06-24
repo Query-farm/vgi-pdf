@@ -5,22 +5,29 @@ functions** -- the form that accepts DuckDB ``name := value`` arguments
 (``page``). The per-row, single-value PDF functions are *scalars* and live in
 :mod:`vgi_pdf.scalars`.
 
-    SELECT * FROM pdf.tables('report.pdf');                 -- every cell, long format
-    SELECT * FROM pdf.tables('report.pdf', page := 1);      -- only page 1
-    SELECT * FROM pdf.words('report.pdf') ORDER BY top, x0; -- word boxes
-    SELECT * FROM pdf.pages('report.pdf');                  -- page geometry
+    SELECT * FROM pdf.tables(pdf := 'report.pdf');                 -- every cell, long format
+    SELECT * FROM pdf.tables(pdf := 'report.pdf', page := 1);      -- only page 1
+    SELECT * FROM pdf.words(pdf := 'report.pdf') ORDER BY top, x0; -- word boxes
+    SELECT * FROM pdf.pages(pdf := 'report.pdf');                  -- page geometry
 
 Polymorphic ``pdf`` input
 -------------------------
-The first positional argument is **either** a ``VARCHAR`` filesystem path the
-worker opens **or** a ``BLOB`` of raw PDF bytes. DuckDB dispatches on the
-argument type, so each table function is registered twice -- a ``*PathFunction``
-(``Arg`` typed ``pa.string()``) and a ``*BytesFunction`` (typed ``pa.binary()``)
--- sharing one ``Meta.name``.
+The ``pdf`` argument is **either** a ``VARCHAR`` filesystem path the worker opens
+**or** a ``BLOB`` of raw PDF bytes. Unlike the scalars -- which register a
+path/bytes pair of *positional* overloads -- a table function that also takes
+the optional ``page`` argument cannot overload on the positional type: DuckDB
+would render the first parameter as the unnamed ``col0`` placeholder and a named
+``pdf := …`` call would be ambiguous across the VARCHAR/BLOB casts. So each
+table function declares a **single** ``pdf`` argument typed
+:class:`~vgi.arguments.AnyArrowValue` (with a VARCHAR-or-BLOB ``type_bound``) and
+dispatches on the runtime value type in :func:`_source_from_any`. Because the
+argument is a named table-function parameter, call it by keyword
+(``pdf := '…'``); :data:`_PAGE` is the optional ``page :=`` filter.
 
 Hostile input: an unreadable / encrypted / malformed PDF surfaces a clean
 DuckDB error (raised from :mod:`vgi_pdf.core`), never a worker crash or hang. A
-NULL ``pdf`` argument yields **no rows**.
+NULL ``pdf`` argument likewise surfaces a clean ``ArgumentValidationError`` (the
+single ``ANY``-typed parameter is required and non-nullable) rather than a crash.
 """
 
 from __future__ import annotations
@@ -29,7 +36,7 @@ from dataclasses import dataclass
 from typing import Annotated, ClassVar
 
 import pyarrow as pa
-from vgi.arguments import Arg
+from vgi.arguments import AnyArrow, AnyArrowValue, Arg
 from vgi.metadata import FunctionExample
 from vgi.table_function import (
     BindParams,
@@ -132,6 +139,55 @@ _PAGE = Arg[int | None](
 
 
 # ---------------------------------------------------------------------------
+# The polymorphic ``pdf`` argument (VARCHAR path OR BLOB bytes) as ONE param.
+# ---------------------------------------------------------------------------
+# Scalars register a path/bytes pair of overloads, but a table function that
+# *also* takes the optional named ``page`` arg cannot do that: with two
+# positional-type overloads DuckDB renders the first parameter as the unnamed
+# placeholder ``col0`` (and a named ``pdf := …`` call would be ambiguous between
+# the VARCHAR/BLOB casts). So every structure table function declares a single
+# ``pdf`` argument typed :class:`AnyArrowValue` (the ``Arg[AnyArrow]`` subscript
+# registers the DuckDB parameter as ``ANY`` and silences the ``type_bound``
+# warning; the annotation's ``AnyArrowValue`` base type is what flags the spec as
+# any-typed) with a VARCHAR-or-BLOB ``type_bound`` — one named ``ANY`` signature,
+# called by keyword (``tables(pdf := 'x')``) and dispatched on the runtime value
+# type. A bare positional ``tables('x')`` no longer binds (DuckDB won't coerce a
+# VARCHAR/BLOB literal to the single ANY parameter without the keyword), and a
+# NULL ``pdf`` is rejected with a clean ``ArgumentValidationError`` (the required
+# ANY param cannot be Optional without losing the any-type registration).
+_PDF = Arg[AnyArrow](
+    "pdf",
+    type_bound=[pa.types.is_string, pa.types.is_large_string, pa.types.is_binary, pa.types.is_large_binary],
+    doc="The PDF as a VARCHAR filesystem path the worker opens, or a BLOB of the raw PDF bytes.",
+)
+
+
+def _source_from_any(value: object | None) -> PdfSource | None:
+    """Build a :class:`PdfSource` from the polymorphic ``pdf`` argument.
+
+    In the typed-dataclass argument pattern the bound value is the raw Python
+    value (``str`` / ``bytes``), or an :class:`AnyArrowValue` wrapper when the
+    SDK surfaces metadata. Dispatches on the runtime type: ``str`` -> a
+    filesystem path, ``bytes`` -> raw PDF bytes. A NULL/absent argument yields
+    ``None`` so the caller emits no rows.
+
+    Args:
+        value: The bound ``pdf`` argument (raw value or wrapper), or ``None``.
+
+    Returns:
+        A normalized source handle, or ``None`` for a NULL/empty input.
+    """
+    raw = value.value if isinstance(value, AnyArrowValue) else value
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return PdfSource.from_path(raw)
+    if isinstance(raw, bytes | bytearray | memoryview):
+        return PdfSource.from_bytes(bytes(raw))
+    raise core.PdfError(f"unsupported pdf argument type: {type(raw).__name__}")
+
+
+# ---------------------------------------------------------------------------
 # pages(pdf) -> (page, width, height, rotation)
 # ---------------------------------------------------------------------------
 
@@ -146,13 +202,18 @@ _PAGES_SCHEMA = pa.schema(
 
 
 @dataclass(kw_only=True)
-class _PagesPathArgs:
-    pdf: Annotated[str | None, Arg(0, arrow_type=pa.string(), doc="Filesystem path to a PDF.")]
+class _PagesArgs:
+    pdf: Annotated[AnyArrowValue, _PDF]
 
 
-@dataclass(kw_only=True)
-class _PagesBytesArgs:
-    pdf: Annotated[bytes | None, Arg(0, arrow_type=pa.binary(), doc="Raw PDF bytes.")]
+_PAGES_COLUMNS_MD = (
+    "| column | type | description |\n"
+    "|---|---|---|\n"
+    "| `page` | INTEGER | 1-based page number. |\n"
+    "| `width` | DOUBLE | Page width in PDF points. |\n"
+    "| `height` | DOUBLE | Page height in PDF points. |\n"
+    "| `rotation` | INTEGER | Page rotation in degrees (0/90/180/270). |"
+)
 
 
 def _build_pages(src: PdfSource, schema: pa.Schema) -> pa.RecordBatch:
@@ -170,8 +231,8 @@ def _build_pages(src: PdfSource, schema: pa.Schema) -> pa.RecordBatch:
 
 @init_single_worker
 @bind_fixed_schema
-class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs, ScanState]):
-    """``pages(path)`` -- per-page geometry of a PDF at a filesystem path."""
+class PagesFunction(TableFunctionGenerator[_PagesArgs, ScanState]):
+    """``pages(pdf)`` -- per-page geometry of a PDF."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
 
@@ -179,73 +240,31 @@ class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs, ScanState]):
         """Function metadata (name, description, examples)."""
 
         name = "pages"
-        description = "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path)"
+        description = "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "structure"]
+        tags = {"vgi.columns_md": _PAGES_COLUMNS_MD}
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.pages('doc.pdf')",
+                sql="SELECT * FROM pdf.pages(pdf := 'doc.pdf')",
                 description="Page geometry of a PDF file",
             ),
         ]
 
     @classmethod
-    def cardinality(cls, params: BindParams[_PagesPathArgs]) -> TableCardinality:
+    def cardinality(cls, params: BindParams[_PagesArgs]) -> TableCardinality:
         """Return the estimated output cardinality."""
         return TableCardinality(estimate=10, max=None)
 
     @classmethod
-    def initial_state(cls, params: ProcessParams[_PagesPathArgs]) -> ScanState:
+    def initial_state(cls, params: ProcessParams[_PagesArgs]) -> ScanState:
         """Return a fresh scan-state cursor for a new execution."""
         return ScanState()
 
     @classmethod
-    def process(cls, params: ProcessParams[_PagesPathArgs], state: ScanState, out: OutputCollector) -> None:
+    def process(cls, params: ProcessParams[_PagesArgs], state: ScanState, out: OutputCollector) -> None:
         """Materialize the page batch once, then stream bounded slices."""
         if not state.started:
-            src = PdfSource.from_path(params.args.pdf)
-            if src is None:
-                out.finish()
-                return
-            state.rows_ipc = result_to_ipc(_build_pages(src, params.output_schema))
-            state.started = True
-        _stream_slice(state, params.output_schema, out)
-
-
-@init_single_worker
-@bind_fixed_schema
-class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs, ScanState]):
-    """``pages(blob)`` -- per-page geometry of a PDF passed as bytes."""
-
-    FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
-
-    class Meta:
-        """Function metadata (name, description, examples)."""
-
-        name = "pages"
-        description = "Per-page geometry (page, width, height, rotation) of a PDF (BLOB bytes)"
-        categories = ["pdf", "structure"]
-        examples = [
-            FunctionExample(
-                sql="SELECT * FROM pdf.pages(blob)",
-                description="Page geometry of a PDF held as bytes",
-            ),
-        ]
-
-    @classmethod
-    def cardinality(cls, params: BindParams[_PagesBytesArgs]) -> TableCardinality:
-        """Return the estimated output cardinality."""
-        return TableCardinality(estimate=10, max=None)
-
-    @classmethod
-    def initial_state(cls, params: ProcessParams[_PagesBytesArgs]) -> ScanState:
-        """Return a fresh scan-state cursor for a new execution."""
-        return ScanState()
-
-    @classmethod
-    def process(cls, params: ProcessParams[_PagesBytesArgs], state: ScanState, out: OutputCollector) -> None:
-        """Materialize the page batch once, then stream bounded slices."""
-        if not state.started:
-            src = PdfSource.from_bytes(params.args.pdf)
+            src = _source_from_any(params.args.pdf)
             if src is None:
                 out.finish()
                 return
@@ -271,15 +290,21 @@ _WORDS_SCHEMA = pa.schema(
 
 
 @dataclass(kw_only=True)
-class _WordsPathArgs:
-    pdf: Annotated[str | None, Arg(0, arrow_type=pa.string(), doc="Filesystem path to a PDF.")]
+class _WordsArgs:
+    pdf: Annotated[AnyArrowValue, _PDF]
     page: Annotated[int | None, _PAGE]
 
 
-@dataclass(kw_only=True)
-class _WordsBytesArgs:
-    pdf: Annotated[bytes | None, Arg(0, arrow_type=pa.binary(), doc="Raw PDF bytes.")]
-    page: Annotated[int | None, _PAGE]
+_WORDS_COLUMNS_MD = (
+    "| column | type | description |\n"
+    "|---|---|---|\n"
+    "| `page` | INTEGER | 1-based page number the word is on. |\n"
+    "| `text` | VARCHAR | The word's text. |\n"
+    "| `x0` | DOUBLE | Left edge, in PDF points from the left. |\n"
+    "| `top` | DOUBLE | Top edge, in PDF points from the top. |\n"
+    "| `x1` | DOUBLE | Right edge, in PDF points from the left. |\n"
+    "| `bottom` | DOUBLE | Bottom edge, in PDF points from the top. |"
+)
 
 
 def _build_words(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
@@ -299,8 +324,8 @@ def _build_words(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.Reco
 
 @init_single_worker
 @bind_fixed_schema
-class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs, ScanState]):
-    """``words(path[, page := ...])`` -- per-word boxes for a PDF at a path."""
+class WordsFunction(TableFunctionGenerator[_WordsArgs, ScanState]):
+    """``words(pdf[, page := ...])`` -- per-word bounding boxes of a PDF."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
 
@@ -308,77 +333,35 @@ class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs, ScanState]):
         """Function metadata (name, description, examples)."""
 
         name = "words"
-        description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path)"
+        description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "words"]
+        tags = {"vgi.columns_md": _WORDS_COLUMNS_MD}
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.words('doc.pdf') ORDER BY page, top, x0",
+                sql="SELECT * FROM pdf.words(pdf := 'doc.pdf') ORDER BY page, top, x0",
                 description="All word boxes in reading order",
             ),
             FunctionExample(
-                sql="SELECT * FROM pdf.words('doc.pdf', page := 1)",
+                sql="SELECT * FROM pdf.words(pdf := 'doc.pdf', page := 1)",
                 description="Word boxes on page 1 only",
             ),
         ]
 
     @classmethod
-    def cardinality(cls, params: BindParams[_WordsPathArgs]) -> TableCardinality:
+    def cardinality(cls, params: BindParams[_WordsArgs]) -> TableCardinality:
         """Return the estimated output cardinality."""
         return TableCardinality(estimate=500, max=None)
 
     @classmethod
-    def initial_state(cls, params: ProcessParams[_WordsPathArgs]) -> ScanState:
+    def initial_state(cls, params: ProcessParams[_WordsArgs]) -> ScanState:
         """Return a fresh scan-state cursor for a new execution."""
         return ScanState()
 
     @classmethod
-    def process(cls, params: ProcessParams[_WordsPathArgs], state: ScanState, out: OutputCollector) -> None:
+    def process(cls, params: ProcessParams[_WordsArgs], state: ScanState, out: OutputCollector) -> None:
         """Materialize the word batch once, then stream bounded slices."""
         if not state.started:
-            src = PdfSource.from_path(params.args.pdf)
-            if src is None:
-                out.finish()
-                return
-            state.rows_ipc = result_to_ipc(_build_words(src, params.args.page, params.output_schema))
-            state.started = True
-        _stream_slice(state, params.output_schema, out)
-
-
-@init_single_worker
-@bind_fixed_schema
-class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs, ScanState]):
-    """``words(blob[, page := ...])`` -- per-word boxes for a PDF as bytes."""
-
-    FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
-
-    class Meta:
-        """Function metadata (name, description, examples)."""
-
-        name = "words"
-        description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (BLOB bytes)"
-        categories = ["pdf", "words"]
-        examples = [
-            FunctionExample(
-                sql="SELECT * FROM pdf.words(blob) ORDER BY page, top, x0",
-                description="All word boxes from PDF bytes",
-            ),
-        ]
-
-    @classmethod
-    def cardinality(cls, params: BindParams[_WordsBytesArgs]) -> TableCardinality:
-        """Return the estimated output cardinality."""
-        return TableCardinality(estimate=500, max=None)
-
-    @classmethod
-    def initial_state(cls, params: ProcessParams[_WordsBytesArgs]) -> ScanState:
-        """Return a fresh scan-state cursor for a new execution."""
-        return ScanState()
-
-    @classmethod
-    def process(cls, params: ProcessParams[_WordsBytesArgs], state: ScanState, out: OutputCollector) -> None:
-        """Materialize the word batch once, then stream bounded slices."""
-        if not state.started:
-            src = PdfSource.from_bytes(params.args.pdf)
+            src = _source_from_any(params.args.pdf)
             if src is None:
                 out.finish()
                 return
@@ -406,15 +389,20 @@ _TABLES_SCHEMA = pa.schema(
 
 
 @dataclass(kw_only=True)
-class _TablesPathArgs:
-    pdf: Annotated[str | None, Arg(0, arrow_type=pa.string(), doc="Filesystem path to a PDF.")]
+class _TablesArgs:
+    pdf: Annotated[AnyArrowValue, _PDF]
     page: Annotated[int | None, _PAGE]
 
 
-@dataclass(kw_only=True)
-class _TablesBytesArgs:
-    pdf: Annotated[bytes | None, Arg(0, arrow_type=pa.binary(), doc="Raw PDF bytes.")]
-    page: Annotated[int | None, _PAGE]
+_TABLES_COLUMNS_MD = (
+    "| column | type | description |\n"
+    "|---|---|---|\n"
+    "| `page` | INTEGER | 1-based page number the cell is on. |\n"
+    "| `table_index` | INTEGER | 0-based table ordinal within the page. |\n"
+    '| `row` | INTEGER | 0-based row index in the table (SQL keyword: quote as `"row"`). |\n'
+    "| `col` | INTEGER | 0-based column index within the table. |\n"
+    "| `value` | VARCHAR | Cell text (NULL for an empty/missing cell). |"
+)
 
 
 def _build_tables(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
@@ -433,8 +421,8 @@ def _build_tables(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.Rec
 
 @init_single_worker
 @bind_fixed_schema
-class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs, ScanState]):
-    """``tables(path[, page := ...])`` -- long-format table cells (PDF at a path)."""
+class TablesFunction(TableFunctionGenerator[_TablesArgs, ScanState]):
+    """``tables(pdf[, page := ...])`` -- long-format table cells of a PDF."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
 
@@ -442,77 +430,37 @@ class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs, ScanState]):
         """Function metadata (name, description, examples)."""
 
         name = "tables"
-        description = "Long-format table cells (page, table_index, row, col, value) of a PDF (VARCHAR path)"
+        description = (
+            "Long-format table cells (page, table_index, row, col, value) of a PDF (VARCHAR path or BLOB bytes)"
+        )
         categories = ["pdf", "tables"]
+        tags = {"vgi.columns_md": _TABLES_COLUMNS_MD}
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.tables('report.pdf') ORDER BY page, table_index, row, col",
+                sql="SELECT * FROM pdf.tables(pdf := 'report.pdf') ORDER BY page, table_index, row, col",
                 description="Every table cell as a tidy row",
             ),
             FunctionExample(
-                sql="SELECT * FROM pdf.tables('report.pdf', page := 1)",
+                sql="SELECT * FROM pdf.tables(pdf := 'report.pdf', page := 1)",
                 description="Table cells on page 1 only",
             ),
         ]
 
     @classmethod
-    def cardinality(cls, params: BindParams[_TablesPathArgs]) -> TableCardinality:
+    def cardinality(cls, params: BindParams[_TablesArgs]) -> TableCardinality:
         """Return the estimated output cardinality."""
         return TableCardinality(estimate=100, max=None)
 
     @classmethod
-    def initial_state(cls, params: ProcessParams[_TablesPathArgs]) -> ScanState:
+    def initial_state(cls, params: ProcessParams[_TablesArgs]) -> ScanState:
         """Return a fresh scan-state cursor for a new execution."""
         return ScanState()
 
     @classmethod
-    def process(cls, params: ProcessParams[_TablesPathArgs], state: ScanState, out: OutputCollector) -> None:
+    def process(cls, params: ProcessParams[_TablesArgs], state: ScanState, out: OutputCollector) -> None:
         """Materialize the cell batch once, then stream bounded slices."""
         if not state.started:
-            src = PdfSource.from_path(params.args.pdf)
-            if src is None:
-                out.finish()
-                return
-            state.rows_ipc = result_to_ipc(_build_tables(src, params.args.page, params.output_schema))
-            state.started = True
-        _stream_slice(state, params.output_schema, out)
-
-
-@init_single_worker
-@bind_fixed_schema
-class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs, ScanState]):
-    """``tables(blob[, page := ...])`` -- long-format table cells (PDF as bytes)."""
-
-    FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
-
-    class Meta:
-        """Function metadata (name, description, examples)."""
-
-        name = "tables"
-        description = "Long-format table cells (page, table_index, row, col, value) of a PDF (BLOB bytes)"
-        categories = ["pdf", "tables"]
-        examples = [
-            FunctionExample(
-                sql="SELECT * FROM pdf.tables(blob) ORDER BY page, table_index, row, col",
-                description="Every table cell from PDF bytes",
-            ),
-        ]
-
-    @classmethod
-    def cardinality(cls, params: BindParams[_TablesBytesArgs]) -> TableCardinality:
-        """Return the estimated output cardinality."""
-        return TableCardinality(estimate=100, max=None)
-
-    @classmethod
-    def initial_state(cls, params: ProcessParams[_TablesBytesArgs]) -> ScanState:
-        """Return a fresh scan-state cursor for a new execution."""
-        return ScanState()
-
-    @classmethod
-    def process(cls, params: ProcessParams[_TablesBytesArgs], state: ScanState, out: OutputCollector) -> None:
-        """Materialize the cell batch once, then stream bounded slices."""
-        if not state.started:
-            src = PdfSource.from_bytes(params.args.pdf)
+            src = _source_from_any(params.args.pdf)
             if src is None:
                 out.finish()
                 return
@@ -522,10 +470,7 @@ class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs, ScanState]):
 
 
 TABLE_FUNCTIONS: list[type] = [
-    TablesPathFunction,
-    TablesBytesFunction,
-    WordsPathFunction,
-    WordsBytesFunction,
-    PagesPathFunction,
-    PagesBytesFunction,
+    TablesFunction,
+    WordsFunction,
+    PagesFunction,
 ]

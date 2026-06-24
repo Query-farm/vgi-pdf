@@ -48,7 +48,7 @@ Quarterly Report
 
 query IIIIT rowsort
 SELECT page, table_index, "row", col, value
-FROM pdf.tables('test/sql/data/table.pdf');
+FROM pdf.tables(pdf := 'test/sql/data/table.pdf');
 ----
 1	0	0	0	Name
 1	0	0	1	Age
@@ -57,20 +57,20 @@ FROM pdf.tables('test/sql/data/table.pdf');
 
 # exactly four cells.
 query I
-SELECT count(*) FROM pdf.tables('test/sql/data/table.pdf');
+SELECT count(*) FROM pdf.tables(pdf := 'test/sql/data/table.pdf');
 ----
 4
 
 # page filter: page 2 of a 1-page doc -> no rows.
 query I
-SELECT count(*) FROM pdf.tables('test/sql/data/table.pdf', page := 2);
+SELECT count(*) FROM pdf.tables(pdf := 'test/sql/data/table.pdf', page := 2);
 ----
 0
 
 # ---- words: per-word boxes, known text, valid box ordering -----------------
 
 query T
-SELECT text FROM pdf.words('test/sql/data/words.pdf') ORDER BY top, x0;
+SELECT text FROM pdf.words(pdf := 'test/sql/data/words.pdf') ORDER BY top, x0;
 ----
 Hello
 World
@@ -79,7 +79,7 @@ Layout
 
 # every box has x0 < x1 and top < bottom.
 query I
-SELECT bool_and(x0 < x1 AND top < bottom) FROM pdf.words('test/sql/data/words.pdf');
+SELECT bool_and(x0 < x1 AND top < bottom) FROM pdf.words(pdf := 'test/sql/data/words.pdf');
 ----
 true
 
@@ -90,13 +90,13 @@ true
 # survives the round-trip; the old emit-all + state:None code would loop forever.
 
 query I
-SELECT count(*) FROM pdf.words('test/sql/data/manywords.pdf');
+SELECT count(*) FROM pdf.words(pdf := 'test/sql/data/manywords.pdf');
 ----
 200
 
 # ordered head: words laid out in reading order recover the original sequence.
 query T
-SELECT text FROM pdf.words('test/sql/data/manywords.pdf') ORDER BY top, x0 LIMIT 3;
+SELECT text FROM pdf.words(pdf := 'test/sql/data/manywords.pdf') ORDER BY top, x0 LIMIT 3;
 ----
 w0000
 w0001
@@ -104,7 +104,7 @@ w0002
 
 # distinct words == total rows: every word emitted exactly once (no dupes).
 query I
-SELECT count(DISTINCT text) FROM pdf.words('test/sql/data/manywords.pdf');
+SELECT count(DISTINCT text) FROM pdf.words(pdf := 'test/sql/data/manywords.pdf');
 ----
 200
 
@@ -112,7 +112,7 @@ SELECT count(DISTINCT text) FROM pdf.words('test/sql/data/manywords.pdf');
 
 query IRRI
 SELECT page, width, height, rotation
-FROM pdf.pages('test/sql/data/multipage.pdf')
+FROM pdf.pages(pdf := 'test/sql/data/multipage.pdf')
 ORDER BY page;
 ----
 1	612.0	792.0	0

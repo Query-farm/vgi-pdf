@@ -47,7 +47,7 @@ true
 
 # Table function over garbage surfaces a clean error (worker survives it).
 statement error
-SELECT * FROM pdf.tables('test/sql/data/garbage.pdf');
+SELECT * FROM pdf.tables(pdf := 'test/sql/data/garbage.pdf');
 ----
 
 # Crucially: the worker is still alive and serving after the error above.

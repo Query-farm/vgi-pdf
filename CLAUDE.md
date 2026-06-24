@@ -87,21 +87,38 @@ no dupes, termination, and bounded chunks (`>= 2` batches each `<= ROWS_PER_TICK
 `structure.test` SQL case pages `manywords.pdf` (200 words > `ROWS_PER_TICK`) and
 asserts `count(*) = 200` + an ordered head — over http that only terminates if
 the cursor works. NOTE: a table-function arg can't be a `(SELECT ...)` subquery in
-`.test`, so `tables`/`words` are driven via the **VARCHAR path overload** there.
+`.test`, so `tables`/`words` are driven via the **VARCHAR `pdf :=` path** there.
 
-## The polymorphic `pdf` input (path OR bytes) — overloads, not AnyArrow
+## The polymorphic `pdf` input (path OR bytes) — scalars overload, table funcs use AnyArrow
 
 Every function accepts the PDF as a **`VARCHAR` path** *or* a **`BLOB` of
-bytes**. These are two distinct DuckDB signatures. Rather than an `AnyArrow`
-param that inspects the runtime type, each function is registered **twice** —
-a `*PathFunction` (input typed `pa.string()`) and a `*BytesFunction` (input
-typed `pa.binary()`) — sharing one `Meta.name`. This is the same explicit-
-overload idiom `vgi-conform` uses for optional args, and it lets DuckDB dispatch
-on the column type. (Don't build the overload classes from a factory: a nested
-`class Meta:` body can't close over an enclosing variable — write them out.)
+bytes**. The two function shapes solve this differently:
 
-`render_page` multiplies this by the optional `dpi`: 4 overloads
-(`(path,page)`, `(path,page,dpi)`, `(blob,page)`, `(blob,page,dpi)`).
+* **Scalars** are registered **twice** — a `*PathFunction` (input typed
+  `pa.string()`) and a `*BytesFunction` (input typed `pa.binary()`) — sharing one
+  `Meta.name`, so DuckDB dispatches on the column type with **positional** args.
+  This is the same explicit-overload idiom `vgi-conform` uses. (Don't build the
+  overload classes from a factory: a nested `class Meta:` body can't close over an
+  enclosing variable — write them out.) `render_page` multiplies this by the
+  optional `dpi`: 4 overloads (`(path,page)`, `(path,page,dpi)`, `(blob,page)`,
+  `(blob,page,dpi)`).
+
+* **Table functions** (`tables`, `words`, `pages`) **cannot** overload on the
+  positional type, because they also take the optional **named** `page :=` arg.
+  With two positional-type overloads DuckDB renders the first parameter as the
+  unnamed `col0` placeholder (which the `vgi-lint` rule **VGI305** flags), and a
+  named `pdf :=` call would be ambiguous between the VARCHAR/BLOB casts. So each
+  table function declares **one** `pdf` argument typed `AnyArrowValue` (with the
+  `Arg[AnyArrow]("pdf", type_bound=[is_string/large_string/binary/large_binary])`
+  descriptor — the `Arg[AnyArrow]` subscript registers the DuckDB param as `ANY`
+  and silences the `type_bound` warning; the annotation's `AnyArrowValue` base
+  type is what flags the arg-spec any-typed). `_source_from_any` dispatches on the
+  runtime value type. Consequence: **call table functions by keyword** —
+  `tables(pdf := '…')`, not `tables('…')` (DuckDB won't coerce a literal to the
+  single `ANY` param positionally) — and a **NULL `pdf` is rejected** with a clean
+  `ArgumentValidationError` (a required `ANY` param can't be made Optional without
+  losing the any-type registration, so it is non-nullable; this replaced the old
+  "NULL `pdf` → no rows" for table functions). See the `tables.py` `_PDF` comment.
 
 `PdfSource` (in `core.py`) is the normalized handle: `from_path` / `from_bytes`
 build one (or `None` for a NULL input), and `read_bytes()` lazily reads the file

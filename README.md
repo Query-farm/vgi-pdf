@@ -33,10 +33,10 @@ SELECT pdf.form_fields('application.pdf');           -- MAP{'full_name': 'Ada'}
 SELECT pdf.render_page('report.pdf', 1);             -- PNG BLOB (default 150 DPI)
 SELECT pdf.render_page('report.pdf', 1, 72);         -- PNG BLOB at 72 DPI
 
--- Table functions: many rows per PDF
-SELECT * FROM pdf.tables('report.pdf') ORDER BY page, table_index, row, col;
-SELECT * FROM pdf.words('report.pdf') ORDER BY page, top, x0;
-SELECT * FROM pdf.pages('report.pdf');
+-- Table functions: many rows per PDF (pass the PDF by the named `pdf :=` arg)
+SELECT * FROM pdf.tables(pdf := 'report.pdf') ORDER BY page, table_index, row, col;
+SELECT * FROM pdf.words(pdf := 'report.pdf') ORDER BY page, top, x0;
+SELECT * FROM pdf.pages(pdf := 'report.pdf');
 ```
 
 Every function accepts the PDF as **either** a `VARCHAR` filesystem path the
@@ -59,12 +59,15 @@ The split follows what the VGI SDK allows for each function shape:
   is registered for both. `render_page`'s optional `dpi` (default 150) is an
   extra arity overload: `render_page(pdf, page)` / `render_page(pdf, page, dpi)`.
 
-* **Table functions** return *many* rows per PDF (the structure itself) and
-  accept DuckDB's `name := value` syntax for the optional `page` filter:
+* **Table functions** return *many* rows per PDF (the structure itself) and use
+  DuckDB's `name := value` syntax for **every** argument: the polymorphic `pdf`
+  input is a single `ANY`-typed parameter (a `VARCHAR` path or a `BLOB` of bytes,
+  dispatched at runtime), so it is passed by keyword too, alongside the optional
+  `page` filter:
 
   ```sql
-  SELECT * FROM pdf.tables('report.pdf', page := 1);   -- only page 1's cells
-  SELECT * FROM pdf.words('report.pdf', page := 2);    -- only page 2's words
+  SELECT * FROM pdf.tables(pdf := 'report.pdf', page := 1);   -- only page 1's cells
+  SELECT * FROM pdf.words(pdf := 'report.pdf', page := 2);    -- only page 2's words
   ```
 
 ## Function catalog
@@ -76,9 +79,9 @@ The split follows what the VGI SDK allows for each function shape:
 | `pdf_metadata` | scalar | `(pdf)` | `MAP(VARCHAR, VARCHAR)` (Title/Author/Producer/…) |
 | `form_fields` | scalar | `(pdf)` | `MAP(VARCHAR, VARCHAR)` (AcroForm name→value) |
 | `render_page` | scalar | `(pdf, page[, dpi])` | `BLOB` (PNG; NULL on failure) |
-| `tables` | table | `(pdf, page := NULL)` | `(page, table_index, row, col, value)` |
-| `words` | table | `(pdf, page := NULL)` | `(page, text, x0, top, x1, bottom)` |
-| `pages` | table | `(pdf)` | `(page, width, height, rotation)` |
+| `tables` | table | `(pdf := …, page := NULL)` | `(page, table_index, row, col, value)` |
+| `words` | table | `(pdf := …, page := NULL)` | `(page, text, x0, top, x1, bottom)` |
+| `pages` | table | `(pdf := …)` | `(page, width, height, rotation)` |
 
 `pdf` is a `VARCHAR` path **or** a `BLOB` of PDF bytes in every function. Pages
 are **1-based**. Coordinates (`x0/top/x1/bottom`, `width/height`) are in PDF

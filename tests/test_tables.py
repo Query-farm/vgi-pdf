@@ -2,7 +2,8 @@
 
 Drives each table function through the real bind -> init -> process lifecycle
 in-process (no worker subprocess), passing the polymorphic ``pdf`` argument as
-BLOB bytes and exercising the optional ``page`` named filter.
+BLOB bytes (via the named ``pdf`` parameter) and exercising the optional
+``page`` named filter.
 """
 
 from __future__ import annotations
@@ -12,9 +13,9 @@ import pytest
 
 from vgi_pdf import tables as tables_mod
 from vgi_pdf.tables import (
-    PagesBytesFunction,
-    TablesBytesFunction,
-    WordsBytesFunction,
+    PagesFunction,
+    TablesFunction,
+    WordsFunction,
 )
 
 from . import fixtures as fx
@@ -27,7 +28,7 @@ def _blob(data: bytes) -> pa.Scalar:
 
 class TestTables:
     def test_known_2x2(self) -> None:
-        table = invoke_table_function(TablesBytesFunction, positional=(_blob(fx.make_table_pdf()),))
+        table = invoke_table_function(TablesFunction, named={"pdf": _blob(fx.make_table_pdf())})
         assert table.column_names == ["page", "table_index", "row", "col", "value"]
         rows = {(r["page"], r["table_index"], r["row"], r["col"]): r["value"] for r in table.to_pylist()}
         assert rows[(1, 0, 0, 0)] == "Name"
@@ -38,26 +39,29 @@ class TestTables:
 
     def test_page_filter(self) -> None:
         table = invoke_table_function(
-            TablesBytesFunction,
-            positional=(_blob(fx.make_table_pdf()),),
-            named={"page": pa.scalar(2, type=pa.int32())},
+            TablesFunction,
+            named={"pdf": _blob(fx.make_table_pdf()), "page": pa.scalar(2, type=pa.int32())},
         )
         assert table.num_rows == 0  # only one page
 
-    def test_null_pdf_no_rows(self) -> None:
-        table = invoke_table_function(TablesBytesFunction, positional=(pa.scalar(None, type=pa.binary()),))
-        assert table.num_rows == 0
+    def test_null_pdf_rejected(self) -> None:
+        # The single ANY-typed ``pdf`` parameter is required and non-nullable, so
+        # a NULL ``pdf`` surfaces a clean validation error (not a crash, not rows).
+        from vgi.arguments import ArgumentValidationError
+
+        with pytest.raises(ArgumentValidationError):
+            invoke_table_function(TablesFunction, named={"pdf": pa.scalar(None, type=pa.binary())})
 
 
 class TestWords:
     def test_known_words(self) -> None:
-        table = invoke_table_function(WordsBytesFunction, positional=(_blob(fx.make_words_pdf()),))
+        table = invoke_table_function(WordsFunction, named={"pdf": _blob(fx.make_words_pdf())})
         assert table.column_names == ["page", "text", "x0", "top", "x1", "bottom"]
         texts = table.column("text").to_pylist()
         assert texts == ["Hello", "World", "Structured", "Layout"]
 
     def test_boxes_valid(self) -> None:
-        table = invoke_table_function(WordsBytesFunction, positional=(_blob(fx.make_words_pdf()),))
+        table = invoke_table_function(WordsFunction, named={"pdf": _blob(fx.make_words_pdf())})
         for r in table.to_pylist():
             assert r["x0"] < r["x1"]
             assert r["top"] < r["bottom"]
@@ -65,7 +69,7 @@ class TestWords:
 
 class TestPages:
     def test_geometry(self) -> None:
-        table = invoke_table_function(PagesBytesFunction, positional=(_blob(fx.make_multipage_pdf()),))
+        table = invoke_table_function(PagesFunction, named={"pdf": _blob(fx.make_multipage_pdf())})
         assert table.column_names == ["page", "width", "height", "rotation"]
         assert table.column("page").to_pylist() == [1, 2, 3]
         assert table.column("width").to_pylist() == [612.0, 612.0, 612.0]
@@ -86,10 +90,10 @@ class TestScanStateRoundTrip:
     def test_words_identical_with_and_without_serialization(self) -> None:
         # > ROWS_PER_TICK (64) words so the scan spans several ticks.
         pdf = fx.make_many_words_pdf(200)
-        plain = invoke_table_function(WordsBytesFunction, positional=(_blob(pdf),))
+        plain = invoke_table_function(WordsFunction, named={"pdf": _blob(pdf)})
         rt = invoke_table_function(
-            WordsBytesFunction,
-            positional=(_blob(pdf),),
+            WordsFunction,
+            named={"pdf": _blob(pdf)},
             serialize_state=True,
         )
         assert plain.num_rows > tables_mod.ROWS_PER_TICK
@@ -111,9 +115,9 @@ class TestScanStateRoundTrip:
 
         from .harness import MockOutputCollector
 
-        func = WordsBytesFunction
+        func = WordsFunction
         pdf = fx.make_many_words_pdf(200)
-        args = Arguments(positional=(_blob(pdf),), named={})
+        args = Arguments(positional=(), named={"pdf": _blob(pdf)})
         bind_req = BindRequest(function_name=func.Meta.name, arguments=args, function_type=FunctionType.TABLE)
         bind_resp = func.bind(bind_req)
         init_req = InitRequest(bind_call=bind_req, output_schema=bind_resp.output_schema)
@@ -142,8 +146,8 @@ class TestCursorSurvivesContinuation:
 
     def test_tables_identical_with_serialization(self) -> None:
         pdf = fx.make_table_pdf()
-        plain = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),))
-        rt = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),), serialize_state=True)
+        plain = invoke_table_function(TablesFunction, named={"pdf": _blob(pdf)})
+        rt = invoke_table_function(TablesFunction, named={"pdf": _blob(pdf)}, serialize_state=True)
         assert rt.to_pylist() == plain.to_pylist()
 
     def test_small_chunk_spans_batches(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -151,8 +155,8 @@ class TestCursorSurvivesContinuation:
         # then prove the cursor round-trips correctly across each one.
         monkeypatch.setattr(tables_mod, "ROWS_PER_TICK", 2)
         pdf = fx.make_table_pdf()
-        plain = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),))
-        rt = invoke_table_function(TablesBytesFunction, positional=(_blob(pdf),), serialize_state=True)
+        plain = invoke_table_function(TablesFunction, named={"pdf": _blob(pdf)})
+        rt = invoke_table_function(TablesFunction, named={"pdf": _blob(pdf)}, serialize_state=True)
         assert plain.num_rows == 4
         assert rt.num_rows == 4
         assert rt.to_pylist() == plain.to_pylist()
@@ -160,9 +164,8 @@ class TestCursorSurvivesContinuation:
     def test_empty_result_terminates(self) -> None:
         # Page filter selecting a non-existent page -> 0 rows; must still finish.
         rt = invoke_table_function(
-            TablesBytesFunction,
-            positional=(_blob(fx.make_table_pdf()),),
-            named={"page": pa.scalar(2, type=pa.int32())},
+            TablesFunction,
+            named={"pdf": _blob(fx.make_table_pdf()), "page": pa.scalar(2, type=pa.int32())},
             serialize_state=True,
         )
         assert rt.num_rows == 0
