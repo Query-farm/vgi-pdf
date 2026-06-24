@@ -39,6 +39,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# HTTP transport: the worker can serve over HTTP (`pdf_worker.py --http`)
+# in addition to stdio. That path needs vgi-python's `http` extra (waitress).
+# CI's http transport leg installs this via `uv sync --extra http`.
+http = [
+    "vgi-python[http]>=0.8.3",
+]
 dev = [
     "pytest>=8",
     "ruff",
@@ -64,6 +70,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "D"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# The PEP 723 inline-script header wraps dependency pins that should stay one-per-line.
+"pdf_worker.py" = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

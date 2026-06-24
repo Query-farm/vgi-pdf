@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python>=0.8.3",
+#     "vgi-python[http]>=0.8.3",
 #     "pdfplumber>=0.11",
 #     "pypdfium2>=4.30",
 #     "pikepdf>=9",

@@ -78,11 +78,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   integration:
-    name: End-to-end SQL on ${{ matrix.os }}
+    name: SQL E2E (${{ matrix.transport }}) on ${{ matrix.os }}
     needs: resolve-haybarn
     strategy:
       fail-fast: false
       matrix:
+        # Run the SAME sqllogictest suite over every VGI transport. The vgi
+        # extension picks the transport from the ATTACH LOCATION string that
+        # run-integration.sh builds per $TRANSPORT:
+        #   subprocess : `uv run pdf_worker.py`     (stdio; extension spawns it)
+        #   http       : `http://127.0.0.1:<port>`  (worker booted with --http)
+        #   unix       : `unix:///tmp/pdf.sock`      (worker booted with --unix)
+        os: [ubuntu-latest, macos-latest]
+        transport: [subprocess, http, unix]
         include:
           - { os: ubuntu-latest, asset: haybarn_unittest-linux-amd64.zip }
           - { os: macos-latest,  asset: haybarn_unittest-osx-arm64.zip }
@@ -99,8 +107,10 @@ jobs:
       - name: Set up Python 3.13
         run: uv python install 3.13
 
-      - name: Install the worker (from the lockfile)
-        run: uv sync --frozen --python 3.13
+      - name: Install the worker (from the lockfile, with the http extra)
+        # The `http` extra pulls in waitress so the worker can serve `--http`.
+        # Harmless for the subprocess/unix legs; required for the http leg.
+        run: uv sync --frozen --python 3.13 --extra http
 
       - name: Download haybarn-unittest
         run: |
@@ -116,11 +126,19 @@ jobs:
       - name: Resolve runner + worker paths
         run: |
           # Absolute paths: run-integration.sh cd's into a staging dir before
-          # invoking the runner, so relative paths would not resolve.
+          # invoking the runner, so relative paths would not resolve. The worker
+          # is a repo-root PEP 723 script (no console-script); `uv run` reads its
+          # inline deps and resolves them from PyPI, so an absolute script path
+          # spawns correctly regardless of cwd — exactly how DuckDB ATTACH and
+          # the pytest fixture drive it. WORKER_CMD is used directly as the
+          # stdio LOCATION for subprocess, and as the process the harness boots
+          # for --http / --unix.
           UNITTEST="$PWD/$(find hb -name 'haybarn-unittest' -type f | head -1)"
           chmod +x "$UNITTEST"
           echo "HAYBARN_UNITTEST=$UNITTEST" >> "$GITHUB_ENV"
-          echo "VGI_PDF_WORKER=uv run --python 3.13 $PWD/pdf_worker.py" >> "$GITHUB_ENV"
+          echo "WORKER_CMD=uv run --python 3.13 $PWD/pdf_worker.py" >> "$GITHUB_ENV"
 
-      - name: Run extension integration suite
+      - name: Run extension integration suite (${{ matrix.transport }})
         run: ci/run-integration.sh
+        env:
+          TRANSPORT: ${{ matrix.transport }}
