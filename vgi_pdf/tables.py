@@ -39,11 +39,86 @@ from vgi.table_function import (
     bind_fixed_schema,
     init_single_worker,
 )
+from vgi_rpc import ArrowSerializableDataclass
 from vgi_rpc.rpc import OutputCollector
 
 from . import core
 from .core import PdfSource
 from .schema_utils import field
+
+# ---------------------------------------------------------------------------
+# Externalized scan cursor (HTTP-continuation fix)
+# ---------------------------------------------------------------------------
+# Over the stateless HTTP transport the framework wire-serializes a producer's
+# per-scan state after every ``process`` tick and resumes by deserializing it,
+# emitting at most one producer batch per response. A position-less ``state:
+# None`` generator that emits ALL rows in one ``out.emit`` then finishes would
+# restart from row 0 on every HTTP resume and loop forever once the output
+# exceeds one producer batch (``words`` is hundreds-thousands of rows per PDF,
+# ``tables`` one row per cell -- both genuinely unbounded). subprocess/unix
+# keep state in-process so they hide the bug; only http (and the
+# serialize-between-ticks unit test) expose it.
+#
+# Fix: carry an explicit cursor in the serializable ``ScanState`` -- the
+# materialized full result batch (as IPC bytes) plus an integer ``offset``.
+# Each tick emits a bounded ``ROWS_PER_TICK`` slice from ``offset``, advances
+# ``offset``, and finishes when drained. Rows/schema are byte-identical to the
+# old emit-all path.
+
+ROWS_PER_TICK = 64  # bounded slice per tick; cursor observable across HTTP limit-1
+
+
+@dataclass(kw_only=True)
+class ScanState(ArrowSerializableDataclass):
+    """Externalized scan cursor, round-tripped across every ``process`` tick.
+
+    ``started`` flips once the (possibly heavy) PDF source has been read and the
+    full result materialized; ``rows_ipc`` holds those result rows as IPC bytes;
+    ``offset`` is the next unemitted row. All fields wire-serialize through the
+    HTTP continuation token so a resumed tick sees the advanced offset and emits
+    the next slice (or finishes) -- never re-reads the PDF from row 0.
+
+    ``started`` distinguishes "not yet read" from "read an empty/NULL source".
+    """
+
+    started: bool = False
+    offset: int = 0
+    rows_ipc: bytes = b""
+
+
+def result_to_ipc(batch: pa.RecordBatch) -> bytes:
+    """Serialize a single RecordBatch to Arrow IPC stream bytes."""
+    sink = pa.BufferOutputStream()
+    with pa.ipc.new_stream(sink, batch.schema) as writer:  # type: ignore[no-untyped-call]
+        writer.write_batch(batch)
+    result: bytes = sink.getvalue().to_pybytes()
+    return result
+
+
+def ipc_to_table(value: bytes) -> pa.Table:
+    """Read Arrow IPC stream bytes back into a Table."""
+    reader = pa.ipc.open_stream(pa.BufferReader(value))  # type: ignore[no-untyped-call]
+    return reader.read_all()
+
+
+def _stream_slice(state: ScanState, schema: pa.Schema, out: OutputCollector) -> None:
+    """Emit one bounded slice from ``state.offset``; finish when drained.
+
+    The materialized full batch lives in ``state.rows_ipc`` (the source of
+    truth across the wire). This emits at most ``ROWS_PER_TICK`` rows starting
+    at ``state.offset``, advances ``offset``, and calls ``out.finish()`` once
+    ``offset >= total`` (an empty result terminates immediately: 0 >= 0).
+    """
+    table = ipc_to_table(state.rows_ipc)
+    total = table.num_rows
+    if state.offset >= total:
+        out.finish()
+        return
+    end = min(state.offset + ROWS_PER_TICK, total)
+    chunk = table.slice(state.offset, end - state.offset)
+    out.emit(chunk.combine_chunks().to_batches()[0])
+    state.offset = end
+
 
 # Optional 1-based page filter shared by ``tables`` and ``words``. NULL means
 # "all pages". Explicit ``arrow_type`` so a supplied INTEGER binds correctly
@@ -80,25 +155,22 @@ class _PagesBytesArgs:
     pdf: Annotated[bytes | None, Arg(0, arrow_type=pa.binary(), doc="Raw PDF bytes.")]
 
 
-def _emit_pages(src: PdfSource, out: OutputCollector, schema: pa.Schema) -> None:
+def _build_pages(src: PdfSource, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.pages(src)
-    out.emit(
-        pa.RecordBatch.from_pydict(
-            {
-                "page": [r[0] for r in rows],
-                "width": [r[1] for r in rows],
-                "height": [r[2] for r in rows],
-                "rotation": [r[3] for r in rows],
-            },
-            schema=schema,
-        )
+    return pa.RecordBatch.from_pydict(
+        {
+            "page": [r[0] for r in rows],
+            "width": [r[1] for r in rows],
+            "height": [r[2] for r in rows],
+            "rotation": [r[3] for r in rows],
+        },
+        schema=schema,
     )
-    out.finish()
 
 
 @init_single_worker
 @bind_fixed_schema
-class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs]):
+class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs, ScanState]):
     """``pages(path)`` -- per-page geometry of a PDF at a filesystem path."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
@@ -122,18 +194,26 @@ class PagesPathFunction(TableFunctionGenerator[_PagesPathArgs]):
         return TableCardinality(estimate=10, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_PagesPathArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_path(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_pages(src, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_PagesPathArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_PagesPathArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the page batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_path(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_pages(src, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 @init_single_worker
 @bind_fixed_schema
-class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs]):
+class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs, ScanState]):
     """``pages(blob)`` -- per-page geometry of a PDF passed as bytes."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _PAGES_SCHEMA
@@ -157,13 +237,21 @@ class PagesBytesFunction(TableFunctionGenerator[_PagesBytesArgs]):
         return TableCardinality(estimate=10, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_PagesBytesArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_bytes(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_pages(src, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_PagesBytesArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_PagesBytesArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the page batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_bytes(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_pages(src, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 # ---------------------------------------------------------------------------
@@ -194,27 +282,24 @@ class _WordsBytesArgs:
     page: Annotated[int | None, _PAGE]
 
 
-def _emit_words(src: PdfSource, page: int | None, out: OutputCollector, schema: pa.Schema) -> None:
+def _build_words(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.words(src, page)
-    out.emit(
-        pa.RecordBatch.from_pydict(
-            {
-                "page": [r[0] for r in rows],
-                "text": [r[1] for r in rows],
-                "x0": [r[2] for r in rows],
-                "top": [r[3] for r in rows],
-                "x1": [r[4] for r in rows],
-                "bottom": [r[5] for r in rows],
-            },
-            schema=schema,
-        )
+    return pa.RecordBatch.from_pydict(
+        {
+            "page": [r[0] for r in rows],
+            "text": [r[1] for r in rows],
+            "x0": [r[2] for r in rows],
+            "top": [r[3] for r in rows],
+            "x1": [r[4] for r in rows],
+            "bottom": [r[5] for r in rows],
+        },
+        schema=schema,
     )
-    out.finish()
 
 
 @init_single_worker
 @bind_fixed_schema
-class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs]):
+class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs, ScanState]):
     """``words(path[, page := ...])`` -- per-word boxes for a PDF at a path."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
@@ -242,18 +327,26 @@ class WordsPathFunction(TableFunctionGenerator[_WordsPathArgs]):
         return TableCardinality(estimate=500, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_WordsPathArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_path(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_words(src, params.args.page, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_WordsPathArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_WordsPathArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the word batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_path(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_words(src, params.args.page, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 @init_single_worker
 @bind_fixed_schema
-class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs]):
+class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs, ScanState]):
     """``words(blob[, page := ...])`` -- per-word boxes for a PDF as bytes."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _WORDS_SCHEMA
@@ -277,13 +370,21 @@ class WordsBytesFunction(TableFunctionGenerator[_WordsBytesArgs]):
         return TableCardinality(estimate=500, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_WordsBytesArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_bytes(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_words(src, params.args.page, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_WordsBytesArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_WordsBytesArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the word batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_bytes(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_words(src, params.args.page, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 # ---------------------------------------------------------------------------
@@ -316,26 +417,23 @@ class _TablesBytesArgs:
     page: Annotated[int | None, _PAGE]
 
 
-def _emit_tables(src: PdfSource, page: int | None, out: OutputCollector, schema: pa.Schema) -> None:
+def _build_tables(src: PdfSource, page: int | None, schema: pa.Schema) -> pa.RecordBatch:
     rows = core.tables(src, page)
-    out.emit(
-        pa.RecordBatch.from_pydict(
-            {
-                "page": [r[0] for r in rows],
-                "table_index": [r[1] for r in rows],
-                "row": [r[2] for r in rows],
-                "col": [r[3] for r in rows],
-                "value": [r[4] for r in rows],
-            },
-            schema=schema,
-        )
+    return pa.RecordBatch.from_pydict(
+        {
+            "page": [r[0] for r in rows],
+            "table_index": [r[1] for r in rows],
+            "row": [r[2] for r in rows],
+            "col": [r[3] for r in rows],
+            "value": [r[4] for r in rows],
+        },
+        schema=schema,
     )
-    out.finish()
 
 
 @init_single_worker
 @bind_fixed_schema
-class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs]):
+class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs, ScanState]):
     """``tables(path[, page := ...])`` -- long-format table cells (PDF at a path)."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
@@ -363,18 +461,26 @@ class TablesPathFunction(TableFunctionGenerator[_TablesPathArgs]):
         return TableCardinality(estimate=100, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_TablesPathArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_path(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_tables(src, params.args.page, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_TablesPathArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_TablesPathArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the cell batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_path(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_tables(src, params.args.page, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 @init_single_worker
 @bind_fixed_schema
-class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs]):
+class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs, ScanState]):
     """``tables(blob[, page := ...])`` -- long-format table cells (PDF as bytes)."""
 
     FIXED_SCHEMA: ClassVar[pa.Schema] = _TABLES_SCHEMA
@@ -398,13 +504,21 @@ class TablesBytesFunction(TableFunctionGenerator[_TablesBytesArgs]):
         return TableCardinality(estimate=100, max=None)
 
     @classmethod
-    def process(cls, params: ProcessParams[_TablesBytesArgs], state: None, out: OutputCollector) -> None:
-        """Emit output rows for the bound PDF input."""
-        src = PdfSource.from_bytes(params.args.pdf)
-        if src is None:
-            out.finish()
-            return
-        _emit_tables(src, params.args.page, out, params.output_schema)
+    def initial_state(cls, params: ProcessParams[_TablesBytesArgs]) -> ScanState:
+        """Return a fresh scan-state cursor for a new execution."""
+        return ScanState()
+
+    @classmethod
+    def process(cls, params: ProcessParams[_TablesBytesArgs], state: ScanState, out: OutputCollector) -> None:
+        """Materialize the cell batch once, then stream bounded slices."""
+        if not state.started:
+            src = PdfSource.from_bytes(params.args.pdf)
+            if src is None:
+                out.finish()
+                return
+            state.rows_ipc = result_to_ipc(_build_tables(src, params.args.page, params.output_schema))
+            state.started = True
+        _stream_slice(state, params.output_schema, out)
 
 
 TABLE_FUNCTIONS: list[type] = [

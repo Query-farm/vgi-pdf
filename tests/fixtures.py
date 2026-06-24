@@ -87,6 +87,33 @@ def make_table_pdf() -> bytes:
     return buf.getvalue()
 
 
+def make_many_words_pdf(n: int = 200) -> bytes:
+    """A page packed with ``n`` distinct, ordered words.
+
+    Each word is ``w0000 w0001 ...`` so the total exceeds ``ROWS_PER_TICK`` and a
+    scan that pages over the HTTP limit-1 continuation boundary must span several
+    ticks. Words are laid out top-to-bottom, left-to-right so reading order
+    (``ORDER BY top, x0``) recovers the original sequence. Deterministic.
+    """
+    buf = io.BytesIO()
+    c = _canvas(buf)
+    c.setTitle(KNOWN_TITLE)
+    # 612x792 US Letter; leave margins. ~10 words per line, lines every 18pt.
+    per_line = 10
+    x_step = 52
+    y_top = 760
+    y_step = 18
+    for i in range(n):
+        line = i // per_line
+        col = i % per_line
+        x = 36 + col * x_step
+        y = y_top - line * y_step
+        c.drawString(x, y, f"w{i:04d}")
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
 def make_multipage_pdf() -> bytes:
     """Three pages, so page-count / per-page filters are exercised."""
     buf = io.BytesIO()
@@ -158,6 +185,10 @@ def regenerate_sql_fixtures(data_dir: str) -> None:
     files = {
         "table.pdf": make_table_pdf(),
         "words.pdf": make_words_pdf(),
+        # manywords.pdf has > ROWS_PER_TICK (64) words so the SQL E2E suite makes
+        # the scan page across the HTTP limit-1 continuation boundary -- it only
+        # terminates over the http transport if the externalized cursor works.
+        "manywords.pdf": make_many_words_pdf(200),
         "multipage.pdf": make_multipage_pdf(),
         "meta.pdf": make_meta_pdf(),
         "form.pdf": make_form_pdf(),

@@ -48,6 +48,47 @@ function-shape split:
 - **Structure (many rows per PDF) are table functions** (`tables`, `words`,
   `pages`), which take the optional `page :=` filter.
 
+## Table-function scan state = the HTTP-continuation cursor (READ THIS)
+
+The structure table functions (`tables`, `words`, `pages`) emit **many rows per
+PDF** — `words` is hundreds–thousands per page, `tables` one row per cell — so
+the output routinely exceeds a single producer batch. That makes the
+externalized **scan cursor** load-bearing, not optional.
+
+Over the **stateless HTTP transport** the framework wire-serializes a producer's
+per-scan state after every `process()` tick (`ArrowSerializableDataclass.
+serialize_to_bytes()`), the client returns the continuation token, and the worker
+resumes by deserializing it — emitting at most **one producer batch per HTTP
+response**. A position-less `state: None` generator that did
+`out.emit(...ALL rows...); out.finish()` would restart from row 0 on **every**
+HTTP resume and **loop forever** once the output exceeds one batch.
+subprocess/unix keep the live state in-process so they hide the bug; **only the
+http leg (and the serialize-between-ticks unit test) expose it.**
+
+Fix (in `tables.py`, mirrors vgi-search's `ScanState`): every function is a
+`TableFunctionGenerator[Args, ScanState]` with `initial_state() -> ScanState()`.
+`ScanState(ArrowSerializableDataclass)` carries `started: bool`, `offset: int`,
+`rows_ipc: bytes` — all plainly serializable, so they survive the continuation
+token. On the **first** tick `process()` reads the PDF, materializes the **full**
+result batch into `rows_ipc` (via `result_to_ipc`), and sets `started`; each tick
+then emits a **bounded `ROWS_PER_TICK`-row slice** from `offset`, advances
+`offset`, and `out.finish()`es once drained (an empty/NULL source materializes 0
+rows and finishes immediately: `0 >= 0`). The `_build_*` helpers return the full
+RecordBatch; `_stream_slice` does the cursor slicing. **The NULL/empty-source
+early `out.finish()` paths stay.** Rows/schema are byte-identical to the old
+emit-all path.
+
+Regression guard: `tests/harness.invoke_table_function(..., serialize_state=True)`
+round-trips the state through `serialize_to_bytes`/`deserialize_from_bytes`
+between every tick (1000-tick guard). `TestScanStateRoundTrip` /
+`TestCursorSurvivesContinuation` in `test_tables.py` assert identical rows/order,
+no dupes, termination, and bounded chunks (`>= 2` batches each `<= ROWS_PER_TICK`
+— this is the **fail-old** assertion; old code emits exactly one batch). The
+`structure.test` SQL case pages `manywords.pdf` (200 words > `ROWS_PER_TICK`) and
+asserts `count(*) = 200` + an ordered head — over http that only terminates if
+the cursor works. NOTE: a table-function arg can't be a `(SELECT ...)` subquery in
+`.test`, so `tables`/`words` are driven via the **VARCHAR path overload** there.
+
 ## The polymorphic `pdf` input (path OR bytes) — overloads, not AnyArrow
 
 Every function accepts the PDF as a **`VARCHAR` path** *or* a **`BLOB` of
