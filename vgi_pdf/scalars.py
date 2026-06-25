@@ -81,7 +81,7 @@ _PAGE_COUNT_TAGS = object_tags(
         "Returns `NULL` for a NULL input or a PDF that cannot be read. Useful for sizing a document "
         "ahead of the `pages`, `words`, and `tables` table functions."
     ),
-    keywords="page count, number of pages, pages, count, length, size, npages, pdf",
+    keywords=["page count", "number of pages", "pages", "count", "length", "size", "npages", "pdf"],
     relative_path=_SRC,
 )
 
@@ -111,7 +111,7 @@ _IS_ENCRYPTED_TAGS = object_tags(
         "`TRUE` means the document is password/permissions protected. `NULL` means the input was not a "
         "readable PDF. Detection is purely structural -- no password guessing is performed."
     ),
-    keywords="encrypted, encryption, password, protected, security, locked, acroform, permissions",
+    keywords=["encrypted", "encryption", "password", "protected", "security", "locked", "acroform", "permissions"],
     relative_path=_SRC,
 )
 
@@ -140,7 +140,17 @@ _PDF_METADATA_TAGS = object_tags(
         "Available keys vary by the tool that produced the PDF. Returns `NULL` for a NULL input or an "
         "unreadable document."
     ),
-    keywords="metadata, document info, title, author, producer, creator, subject, creation date, properties",
+    keywords=[
+        "metadata",
+        "document info",
+        "title",
+        "author",
+        "producer",
+        "creator",
+        "subject",
+        "creation date",
+        "properties",
+    ],
     relative_path=_SRC,
 )
 
@@ -170,7 +180,7 @@ _FORM_FIELDS_TAGS = object_tags(
         "A PDF without a form returns an empty map. Returns `NULL` for a NULL input or an unreadable "
         "document."
     ),
-    keywords="form, form fields, acroform, fillable, fields, inputs, checkbox, submission, values",
+    keywords=["form", "form fields", "acroform", "fillable", "fields", "inputs", "checkbox", "submission", "values"],
     relative_path=_SRC,
 )
 
@@ -200,7 +210,18 @@ _RENDER_PAGE_TAGS = object_tags(
         "The rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL "
         "input, an out-of-range page, or an unreadable document."
     ),
-    keywords="render, render page, png, image, rasterize, thumbnail, preview, screenshot, dpi, bitmap",
+    keywords=[
+        "render",
+        "render page",
+        "png",
+        "image",
+        "rasterize",
+        "thumbnail",
+        "preview",
+        "screenshot",
+        "dpi",
+        "bitmap",
+    ],
     relative_path=_SRC,
 )
 

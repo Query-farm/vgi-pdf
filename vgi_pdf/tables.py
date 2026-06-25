@@ -161,7 +161,7 @@ _PAGE = Arg[int | None](
 _PDF = Arg[AnyArrow](
     "pdf",
     type_bound=[pa.types.is_string, pa.types.is_large_string, pa.types.is_binary, pa.types.is_large_binary],
-    doc="The PDF as a VARCHAR filesystem path the worker opens, or a BLOB of the raw PDF bytes.",
+    doc="The PDF to read: either a filesystem path the worker opens, or the raw PDF bytes themselves.",
 )
 
 
@@ -246,7 +246,17 @@ _PAGES_TAGS = {
             "Dimensions are in PDF points (1/72 inch). Call the function by keyword (`pdf := ...`). A "
             "NULL `pdf` raises an argument error; an unreadable document raises a clean error."
         ),
-        keywords="pages, page geometry, page size, dimensions, width, height, rotation, orientation, landscape",
+        keywords=[
+            "pages",
+            "page geometry",
+            "page size",
+            "dimensions",
+            "width",
+            "height",
+            "rotation",
+            "orientation",
+            "landscape",
+        ],
         relative_path=_SRC,
     ),
     "vgi.result_columns_md": _PAGES_COLUMNS_MD,
@@ -392,7 +402,17 @@ _WORDS_TAGS = {
             "produce no words -- this reads the text layer, it does not OCR. Call by keyword "
             "(`pdf := ...`, optional `page := N`)."
         ),
-        keywords="words, word boxes, bounding box, coordinates, text position, layout, x0, top, reading order",
+        keywords=[
+            "words",
+            "word boxes",
+            "bounding box",
+            "coordinates",
+            "text position",
+            "layout",
+            "x0",
+            "top",
+            "reading order",
+        ],
         relative_path=_SRC,
     ),
     "vgi.result_columns_md": _WORDS_COLUMNS_MD,
@@ -528,7 +548,18 @@ _TABLES_TAGS = {
             'The `row` column is a SQL keyword -- quote it as `"row"`. Pages without a detectable table '
             "produce no rows. Call by keyword (`pdf := ...`, optional `page := N`)."
         ),
-        keywords="tables, table cells, extract table, tabular, cells, rows, columns, long format, grid, spreadsheet",
+        keywords=[
+            "tables",
+            "table cells",
+            "extract table",
+            "tabular",
+            "cells",
+            "rows",
+            "columns",
+            "long format",
+            "grid",
+            "spreadsheet",
+        ],
         relative_path=_SRC,
     ),
     "vgi.result_columns_md": _TABLES_COLUMNS_MD,

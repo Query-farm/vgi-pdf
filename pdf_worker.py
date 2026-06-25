@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.8.4",
+#     "vgi-python[http]>=0.8.5",
 #     "pdfplumber>=0.11",
 #     "pypdfium2>=4.30",
 #     "pikepdf>=9",
@@ -42,6 +42,7 @@ from __future__ import annotations
 from vgi import Worker
 from vgi.catalog import Catalog, Schema
 
+from vgi_pdf.meta import keywords_json
 from vgi_pdf.scalars import SCALAR_FUNCTIONS
 from vgi_pdf.tables import TABLE_FUNCTIONS
 
@@ -77,20 +78,59 @@ _SCHEMA_DESCRIPTION_LLM = (
 )
 
 _SCHEMA_DESCRIPTION_MD = (
-    "PDF structure, layout, and rendering functions over Apache Arrow "
-    "(tables, word boxes, geometry, forms, metadata, page rendering)."
+    "The `main` schema groups every PDF structure, layout, and rendering function this worker exposes, "
+    "all served over Apache Arrow. Scalar functions answer one question per row -- `page_count`, "
+    "`is_encrypted`, `pdf_metadata`, and `form_fields` -- while `render_page` rasterizes a single page to "
+    "a PNG image. The table functions `pages`, `words`, and `tables` expand a document into many rows: "
+    "per-page geometry, per-word bounding boxes, and long-format table cells. Every function accepts the "
+    "PDF as a filesystem path or as raw bytes, and reads the document's structure and coordinates rather "
+    "than performing plain-text extraction or OCR."
 )
 
 _REPO_URL = "https://github.com/Query-farm/vgi-pdf"
 
-_CATALOG_KEYWORDS = (
-    "pdf, document, structure, layout, tables, words, bounding box, page count, render, png, "
-    "metadata, form fields, acroform, encryption, coordinates, geometry"
+# VGI138: vgi.keywords must be a JSON array of strings, not a comma-separated
+# string; ``keywords_json`` serializes these lists into that form.
+_CATALOG_KEYWORDS = keywords_json(
+    [
+        "pdf",
+        "document",
+        "structure",
+        "layout",
+        "tables",
+        "words",
+        "bounding box",
+        "page count",
+        "render",
+        "png",
+        "metadata",
+        "form fields",
+        "acroform",
+        "encryption",
+        "coordinates",
+        "geometry",
+    ]
 )
 
-_SCHEMA_KEYWORDS = (
-    "pdf, page_count, is_encrypted, pdf_metadata, form_fields, render_page, tables, words, pages, "
-    "structure, layout, word boxes, geometry, forms, metadata, rendering"
+_SCHEMA_KEYWORDS = keywords_json(
+    [
+        "pdf",
+        "page_count",
+        "is_encrypted",
+        "pdf_metadata",
+        "form_fields",
+        "render_page",
+        "tables",
+        "words",
+        "pages",
+        "structure",
+        "layout",
+        "word boxes",
+        "geometry",
+        "forms",
+        "metadata",
+        "rendering",
+    ]
 )
 
 # VGI506 representative, catalog-qualified example queries for the schema.
@@ -124,7 +164,8 @@ _SCHEMA_TAGS = {
     "domain": "documents",
     "category": "parsing",
     "topic": "pdf-structure-extraction",
-    "vgi.source_url": f"{_REPO_URL}/blob/main/pdf_worker.py",
+    # VGI139: no per-object vgi.source_url -- the source link lives only on the
+    # catalog object (set via Catalog(source_url=...)).
     "vgi.example_queries": _SCHEMA_EXAMPLE_QUERIES,
     "vgi.doc_llm": _SCHEMA_DESCRIPTION_LLM,
     "vgi.doc_md": _SCHEMA_DESCRIPTION_MD,

@@ -30,7 +30,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "vgi-python>=0.8.4",
+    "vgi-python>=0.8.5",
     "pdfplumber>=0.11",
     "pypdfium2>=4.30",
     "pikepdf>=9",
@@ -43,7 +43,7 @@ dependencies = [
 # in addition to stdio. That path needs vgi-python's `http` extra (waitress).
 # CI's http transport leg installs this via `uv sync --extra http`.
 http = [
-    "vgi-python[http]>=0.8.4",
+    "vgi-python[http]>=0.8.5",
 ]
 dev = [
     "pytest>=8",
