@@ -973,14 +973,14 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "reportlab", marker = "extra == 'dev'", specifier = ">=4" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "vgi-python", specifier = ">=0.8.5" },
-    { name = "vgi-python", extras = ["http"], marker = "extra == 'http'", specifier = ">=0.8.5" },
+    { name = "vgi-python", specifier = ">=0.9.0" },
+    { name = "vgi-python", extras = ["http"], marker = "extra == 'http'", specifier = ">=0.9.0" },
 ]
 provides-extras = ["http", "dev"]
 
 [[package]]
 name = "vgi-python"
-version = "0.8.8"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -990,9 +990,9 @@ dependencies = [
     { name = "typer" },
     { name = "vgi-rpc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/af/d6/da38db08f64e76bd4c86018ed29c3f18994d6676bdb26adcd2168a256066/vgi_python-0.8.8.tar.gz", hash = "sha256:faf6183b72a5f64c6e2d06645d199f252dd98d80a93b975fa7efa267184d1da6", size = 3265533, upload-time = "2026-06-29T14:02:49.704Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/0b/8b3581beb685ba2e97acd3264ca8bbd3eb56c5961b1ebb46a00d1eaf9d2e/vgi_python-0.9.0.tar.gz", hash = "sha256:d488c446a905aaeba78e341897c7bcc5175a5e080c7b7d9b20a7a8795ba2019d", size = 3271638, upload-time = "2026-06-30T15:20:27.293Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/ac/2cd31e62400ff79005765c8918b1471431d0e696356d17413640a17de57d/vgi_python-0.8.8-py3-none-any.whl", hash = "sha256:ca2556340d9d182e98cdc5bc3519e517e0dec78776113a7ede8fd91ff49826bc", size = 605275, upload-time = "2026-06-29T14:02:47.833Z" },
+    { url = "https://files.pythonhosted.org/packages/98/2e/f8d699e4325f97c32265554d3e2dc8562a4bb88584f3a5eb0ebc0ff2e839/vgi_python-0.9.0-py3-none-any.whl", hash = "sha256:e1ed4b78112ea7229e3f6a9c752bc736ef9427e4f6d8770b687f38153c92e95b", size = 609127, upload-time = "2026-06-30T15:20:24.991Z" },
 ]
 
 [package.optional-dependencies]
