@@ -39,6 +39,8 @@ Usage:
 
 from __future__ import annotations
 
+import json
+
 from vgi import Worker
 from vgi.catalog import Catalog, Schema
 
@@ -63,37 +65,36 @@ _CATALOG_DESCRIPTION_LLM = (
 
 _CATALOG_DESCRIPTION_MD = (
     "# PDF Structure & Rendering for DuckDB\n\n"
-    "Query the **structure, layout, and coordinates of PDF documents directly in SQL** -- extract "
-    "tables, per-word bounding boxes, page geometry, AcroForm field values, and document metadata, "
-    "check encryption status, and render any page to a PNG image, all streamed to DuckDB over Apache "
-    "Arrow. This is the layout-and-coordinates companion to plain-text extraction: where a text "
-    "extractor flattens a document to a string, `pdf` preserves *where* every word, cell, and box "
-    "sits on the page.\n\n"
-    "This extension is for data engineers, analysts, and PDF-mining pipelines who need to pull "
-    "structured data out of reports, invoices, statements, and scanned forms without leaving SQL. "
-    "It is backed entirely by permissive, battle-tested open-source libraries. Table detection and "
-    "word geometry come from [pdfplumber]"
+    "Query the **structure, layout, and coordinates of PDF documents directly in SQL** -- pull tabular "
+    "data, per-word geometry, page dimensions, form submissions, and document properties, check whether "
+    "a file is encrypted, and rasterize any page to an image, all streamed to DuckDB over Apache Arrow. "
+    "Where a plain-text extractor flattens a document to a string, this worker preserves *where* every "
+    "word, cell, and box sits on the page.\n\n"
+    "## Who it is for\n\n"
+    "Built for data engineers, analysts, and document-mining pipelines that need to pull structured "
+    "data out of reports, invoices, statements, and scanned forms without leaving SQL. Reach for it "
+    "whenever the *position* of content matters -- reconstructing tabular layouts, locating text by "
+    "coordinate, auditing filled-in forms, or generating page thumbnails -- and reach for a plain-text "
+    "extraction worker instead when you only need the raw prose.\n\n"
+    "## Key concepts\n\n"
+    "- **Path or bytes.** Inputs are accepted as either a `VARCHAR` filesystem path the worker opens, "
+    "or a `BLOB` of raw bytes travelling over Arrow -- so a document already living in a DuckDB column "
+    "works as directly as a file on disk.\n"
+    "- **PDF points.** All geometry is reported in PDF points (1 pt = 1/72 inch) with the origin at the "
+    "top-left corner of the page.\n"
+    "- **Long-format output.** Set-returning functions expand one document into many tidy rows, ready "
+    "to pivot, filter, and join with ordinary SQL.\n\n"
+    "## Backed by permissive libraries only\n\n"
+    "Table detection and word geometry come from [pdfplumber]"
     "(https://github.com/jsvine/pdfplumber) ([docs](https://github.com/jsvine/pdfplumber#readme)); "
     "high-fidelity page rasterization is powered by [pypdfium2]"
     "(https://github.com/pypdfium2-team/pypdfium2) "
-    "([docs](https://pypdfium2.readthedocs.io/)), Google's Chromium PDFium engine; document "
-    "metadata, encryption detection, and AcroForm field reading use [pikepdf]"
+    "([docs](https://pypdfium2.readthedocs.io/)), Google's Chromium PDFium engine; document properties, "
+    "encryption detection, and AcroForm reading use [pikepdf]"
     "(https://github.com/pikepdf/pikepdf) ([docs](https://pikepdf.readthedocs.io/)); and rendered "
     "bitmaps are encoded to PNG with [Pillow](https://github.com/python-pillow/Pillow) "
     "([docs](https://pillow.readthedocs.io/)). Deliberately **never PyMuPDF** -- only permissively "
-    "licensed dependencies.\n\n"
-    "The function surface mirrors the two natural shapes of PDF data. **Scalar functions** answer one "
-    "question per row: `page_count` returns the page total, `is_encrypted` flags password-protected "
-    "files, `pdf_metadata` returns the Title/Author/Producer map, `form_fields` reads filled-in form "
-    "values, and `render_page` rasterizes a page to a PNG `BLOB` at a chosen DPI. **Table functions** "
-    "expand a single document into many rows: `pages` yields per-page width/height/rotation, `words` "
-    "emits every word with its `x0`/`top` bounding box, and `tables` returns detected table cells in "
-    "long `(page, row, col, value)` form. Every function accepts the PDF as either a `VARCHAR` "
-    "filesystem path or a `BLOB` of raw bytes. Typical queries: mine tabular data with "
-    "`SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'report.pdf')`, locate text by "
-    "coordinate via `pdf.main.words(pdf := 'doc.pdf')`, audit submitted forms with "
-    "`pdf.main.form_fields('application.pdf')`, or thumbnail a document using "
-    "`pdf.main.render_page('report.pdf', 1)`."
+    "licensed dependencies."
 )
 
 _SCHEMA_DESCRIPTION_LLM = (
@@ -102,13 +103,21 @@ _SCHEMA_DESCRIPTION_LLM = (
 )
 
 _SCHEMA_DESCRIPTION_MD = (
-    "The `main` schema groups every PDF structure, layout, and rendering function this worker exposes, "
-    "all served over Apache Arrow. Scalar functions answer one question per row -- `page_count`, "
-    "`is_encrypted`, `pdf_metadata`, and `form_fields` -- while `render_page` rasterizes a single page to "
-    "a PNG image. The table functions `pages`, `words`, and `tables` expand a document into many rows: "
-    "per-page geometry, per-word bounding boxes, and long-format table cells. Every function accepts the "
-    "PDF as a filesystem path or as raw bytes, and reads the document's structure and coordinates rather "
-    "than performing plain-text extraction or OCR."
+    "# PDF Structure -- `main`\n\n"
+    "The `main` schema groups every PDF structure, layout, and rendering capability this worker "
+    "exposes, all served to DuckDB over Apache Arrow. It reads a document's *structure and coordinates* "
+    "-- not its plain text -- so you always know where content sits on the page.\n\n"
+    "## What you can do here\n\n"
+    "- **Structure** -- count pages and read per-page geometry (width, height, rotation).\n"
+    "- **Content** -- pull detected table cells in long format, per-word bounding boxes, and filled-in "
+    "form-field values.\n"
+    "- **Metadata** -- read the document information dictionary and check encryption status.\n"
+    "- **Rendering** -- rasterize a single page to a PNG image at a chosen resolution.\n\n"
+    "## Conventions\n\n"
+    "Inputs are accepted as either a `VARCHAR` filesystem path or a `BLOB` of raw bytes, and all "
+    "coordinates are expressed in PDF points (1/72 inch) measured from the top-left corner. The "
+    "set-returning functions take DuckDB `name := value` keyword arguments; the per-row "
+    "question-answering functions are ordinary scalars used inline in any projection."
 )
 
 _REPO_URL = "https://github.com/Query-farm/vgi-pdf"
@@ -169,8 +178,86 @@ _SCHEMA_EXAMPLE_QUERIES = (
     "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'report.pdf');"
 )
 
+# VGI413 controlled-vocabulary category registry for the schema. Ordered JSON
+# array of {name, description}; every function carries a matching ``vgi.category``
+# tag (set via ``meta.object_tags(category=...)``). Categories drive the worker's
+# navigation, listing sections, and SEO descriptions.
+_SCHEMA_CATEGORIES = json.dumps(
+    [
+        {
+            "name": "Structure",
+            "description": "Page counts and per-page geometry (size, orientation, rotation).",
+        },
+        {
+            "name": "Content",
+            "description": ("Data pulled from the page: table cells, per-word bounding boxes, and form-field values."),
+        },
+        {
+            "name": "Metadata",
+            "description": "Document information dictionary and encryption status.",
+        },
+        {
+            "name": "Rendering",
+            "description": "Rasterize a page to a PNG image.",
+        },
+    ],
+    separators=(",", ":"),
+)
+
+# VGI152/VGI920 fixed analyst-task suite. ``vgi-lint simulate`` runs an LLM
+# analyst against each prompt (seeing only the catalog metadata, never the
+# reference), then grades its answer against ``reference_sql``. Prompts are
+# self-contained and target the committed fixtures by path (resolved from the
+# worker cwd = repo root). ``ignore_column_names`` keeps grading on the values,
+# not on whatever alias the analyst happens to pick for a scalar result.
+_AGENT_TEST_TASKS = json.dumps(
+    [
+        {
+            "name": "count_pages",
+            "prompt": ("How many pages does the PDF document at the path 'test/sql/data/multipage.pdf' have?"),
+            "reference_sql": "SELECT pdf.page_count('test/sql/data/multipage.pdf')",
+            "ignore_column_names": True,
+        },
+        {
+            "name": "document_title",
+            "prompt": ("Read the document Title recorded in the metadata of the PDF at 'test/sql/data/meta.pdf'."),
+            "reference_sql": "SELECT pdf.pdf_metadata('test/sql/data/meta.pdf')['Title']",
+            "ignore_column_names": True,
+        },
+        {
+            "name": "is_encrypted",
+            "prompt": "Is the PDF at 'test/sql/data/form.pdf' encrypted?",
+            "reference_sql": "SELECT pdf.is_encrypted('test/sql/data/form.pdf')",
+            "ignore_column_names": True,
+        },
+        {
+            "name": "form_field_value",
+            "prompt": (
+                "The fillable PDF at 'test/sql/data/form.pdf' has an AcroForm field named 'full_name'. "
+                "What value is stored in it?"
+            ),
+            "reference_sql": "SELECT pdf.form_fields('test/sql/data/form.pdf')['full_name']",
+            "ignore_column_names": True,
+        },
+        {
+            "name": "table_cell_count",
+            "prompt": ("How many table cells are detected in the PDF at 'test/sql/data/table.pdf'?"),
+            "reference_sql": "SELECT count(*) FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')",
+            "ignore_column_names": True,
+        },
+        {
+            "name": "words_on_page",
+            "prompt": ("How many words are on page 1 of the PDF at 'test/sql/data/words.pdf'?"),
+            "reference_sql": ("SELECT count(*) FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"),
+            "ignore_column_names": True,
+        },
+    ],
+    separators=(",", ":"),
+)
+
 _CATALOG_TAGS = {
     "vgi.title": "PDF Structure & Rendering",
+    "vgi.agent_test_tasks": _AGENT_TEST_TASKS,
     "vgi.keywords": _CATALOG_KEYWORDS,
     "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
     "vgi.doc_md": _CATALOG_DESCRIPTION_MD,
@@ -184,6 +271,7 @@ _CATALOG_TAGS = {
 _SCHEMA_TAGS = {
     "vgi.title": "PDF — main",
     "vgi.keywords": _SCHEMA_KEYWORDS,
+    "vgi.categories": _SCHEMA_CATEGORIES,
     # VGI123 classifying tags use BARE keys (not vgi.-namespaced) for faceting.
     "domain": "documents",
     "category": "parsing",

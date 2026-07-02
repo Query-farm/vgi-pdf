@@ -82,6 +82,7 @@ _PAGE_COUNT_TAGS = object_tags(
         "ahead of the `pages`, `words`, and `tables` table functions."
     ),
     keywords=["page count", "number of pages", "pages", "count", "length", "size", "npages", "pdf"],
+    category="Structure",
     relative_path=_SRC,
 )
 
@@ -94,9 +95,9 @@ _IS_ENCRYPTED_TAGS = object_tags(
         "path or a `BLOB` of bytes.\n\n"
         "Use it to triage a batch of documents before processing -- encrypted files cannot be parsed "
         "for words/tables/metadata without a password.\n\n"
-        "**Key behavior:** an encrypted-with-no-password file is reported as `TRUE` (encryption is a "
-        "*successful* answer, not an error); the function never attempts to brute-force a password and "
-        "never hangs. NULL input yields NULL."
+        "**Key behavior:** an encrypted file that has no user password still returns `TRUE`. Encryption "
+        "is a *successful* answer, not an error, so the function never attempts to brute-force a password "
+        "and never hangs. NULL input yields NULL."
     ),
     doc_md=(
         "# Detect PDF Encryption\n\n"
@@ -112,6 +113,7 @@ _IS_ENCRYPTED_TAGS = object_tags(
         "readable PDF. Detection is purely structural -- no password guessing is performed."
     ),
     keywords=["encrypted", "encryption", "password", "protected", "security", "locked", "acroform", "permissions"],
+    category="Metadata",
     relative_path=_SRC,
 )
 
@@ -151,6 +153,7 @@ _PDF_METADATA_TAGS = object_tags(
         "creation date",
         "properties",
     ],
+    category="Metadata",
     relative_path=_SRC,
 )
 
@@ -181,6 +184,7 @@ _FORM_FIELDS_TAGS = object_tags(
         "document."
     ),
     keywords=["form", "form fields", "acroform", "fillable", "fields", "inputs", "checkbox", "submission", "values"],
+    category="Content",
     relative_path=_SRC,
 )
 
@@ -222,6 +226,7 @@ _RENDER_PAGE_TAGS = object_tags(
         "dpi",
         "bitmap",
     ],
+    category="Rendering",
     relative_path=_SRC,
 )
 

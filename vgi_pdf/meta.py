@@ -42,6 +42,7 @@ def object_tags(
     doc_llm: str,
     doc_md: str,
     keywords: Sequence[str],
+    category: str,
     relative_path: str,
 ) -> dict[str, str]:
     """Assemble the standard per-object discovery/description tags.
@@ -52,6 +53,10 @@ def object_tags(
         doc_md: Human-doc Markdown narrative (``vgi.doc_md``).
         keywords: Search terms / synonyms, serialized as a JSON array
             (``vgi.keywords``).
+        category: The object's controlled-vocabulary category name
+            (``vgi.category``). It MUST name one of the entries in the schema's
+            ``vgi.categories`` registry (VGI413) so navigation/listing sections
+            group the object correctly.
         relative_path: Implementing source file, relative to the repo root.
             Retained for documentation/back-compat; no per-object
             ``vgi.source_url`` tag is emitted (VGI139 -- the source link lives
@@ -66,4 +71,5 @@ def object_tags(
         "vgi.doc_llm": doc_llm,
         "vgi.doc_md": doc_md,
         "vgi.keywords": keywords_json(keywords),
+        "vgi.category": category,
     }

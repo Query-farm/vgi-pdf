@@ -54,6 +54,18 @@ dev = [
 ]
 
 
+[tool.vgi-lint-check.options]
+# VGI315: the `pdf` argument is deliberately polymorphic -- a VARCHAR path OR a
+# BLOB of raw bytes. Every function offers both, so the VARCHAR/BLOB "type drift"
+# is intentional API design, not an inconsistency; skip the name.
+type_consistency_ignore_names = ["pdf"]
+
+[tool.vgi-lint-check.execution]
+# VGI908: the executable examples drive real PDFs through pdfplumber's layout
+# engine, which is intrinsically a few seconds per call even on tiny fixtures.
+# Raise the slow-example threshold so these expected costs don't warn.
+slow_seconds = 25
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
