@@ -32,11 +32,13 @@ single ``ANY``-typed parameter is required and non-nullable) rather than a crash
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Annotated, ClassVar
 
 import pyarrow as pa
 from vgi.arguments import AnyArrow, AnyArrowValue, Arg
+from vgi.catalog import View
 from vgi.metadata import FunctionExample
 from vgi.table_function import (
     BindParams,
@@ -218,6 +220,17 @@ _PAGES_COLUMNS_MD = (
     "| `rotation` | INTEGER | Page rotation in degrees (0/90/180/270). |"
 )
 
+# VGI307/VGI414: the structured result schema (replaces the retired free-form
+# `vgi.result_columns_md`). JSON array of {name, type, description}.
+_PAGES_COLUMNS_SCHEMA = json.dumps(
+    [
+        {"name": "page", "type": "INTEGER", "description": "1-based page number."},
+        {"name": "width", "type": "DOUBLE", "description": "Page width in PDF points (1 pt = 1/72 inch)."},
+        {"name": "height", "type": "DOUBLE", "description": "Page height in PDF points (1 pt = 1/72 inch)."},
+        {"name": "rotation", "type": "INTEGER", "description": "Page rotation in degrees (0, 90, 180, or 270)."},
+    ]
+)
+
 _PAGES_TAGS = {
     **object_tags(
         title="List PDF Page Geometry",
@@ -235,12 +248,13 @@ _PAGES_TAGS = {
         ),
         doc_md=(
             "# List PDF Page Geometry\n\n"
-            "Returns the geometry of every page in a PDF, one row per page.\n\n"
-            "## Usage\n\n"
-            "```sql\n"
-            "SELECT * FROM pdf.pages(pdf := 'report.pdf');\n"
-            "SELECT page, width, height FROM pdf.pages(pdf := 'report.pdf') WHERE width > height;\n"
-            "```\n\n"
+            "Returns the geometry of every page in a PDF, one row per page: the 1-based page number and "
+            "each page's width, height, and rotation.\n\n"
+            "## Example\n\n"
+            "Calling `pdf.main.pages(pdf := 'report.pdf')` yields one row per page; a US-Letter portrait "
+            "page reports a width of `612` and a height of `792` (points) with a rotation of `0`. "
+            "Restrict to landscape pages by keeping rows where `width` exceeds `height`. Ready-to-run "
+            "SQL lives in the example queries.\n\n"
             "## Columns\n\n" + _PAGES_COLUMNS_MD + "\n\n"
             "## Notes\n\n"
             "Dimensions are in PDF points (1/72 inch). Call the function by keyword (`pdf := ...`). A "
@@ -260,7 +274,7 @@ _PAGES_TAGS = {
         category="Structure",
         relative_path=_SRC,
     ),
-    "vgi.result_columns_md": _PAGES_COLUMNS_MD,
+    "vgi.result_columns_schema": _PAGES_COLUMNS_SCHEMA,
 }
 
 
@@ -293,8 +307,18 @@ class PagesFunction(TableFunctionGenerator[_PagesArgs, ScanState]):
         tags = _PAGES_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.pages(pdf := 'doc.pdf')",
-                description="Page geometry of a PDF file",
+                sql=(
+                    "SELECT page, width, height, rotation "
+                    "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') ORDER BY page"
+                ),
+                description="Per-page geometry of a multi-page PDF, ordered by page",
+            ),
+            FunctionExample(
+                sql=(
+                    "SELECT count(*) AS landscape_pages "
+                    "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') WHERE width > height"
+                ),
+                description="Count the landscape (wider-than-tall) pages",
             ),
         ]
 
@@ -354,6 +378,18 @@ _WORDS_COLUMNS_MD = (
     "| `bottom` | DOUBLE | Bottom edge, in PDF points from the top. |"
 )
 
+# VGI307/VGI414: structured result schema (replaces retired `vgi.result_columns_md`).
+_WORDS_COLUMNS_SCHEMA = json.dumps(
+    [
+        {"name": "page", "type": "INTEGER", "description": "1-based page number the word is on."},
+        {"name": "text", "type": "VARCHAR", "description": "The word's text."},
+        {"name": "x0", "type": "DOUBLE", "description": "Left edge, in PDF points from the left."},
+        {"name": "top", "type": "DOUBLE", "description": "Top edge, in PDF points from the top."},
+        {"name": "x1", "type": "DOUBLE", "description": "Right edge, in PDF points from the left."},
+        {"name": "bottom", "type": "DOUBLE", "description": "Bottom edge, in PDF points from the top."},
+    ]
+)
+
 # VGI509 guaranteed-runnable examples (these are actually EXECUTED by the
 # linter). Each `sql` is catalog-qualified and self-contained, driving the
 # committed test fixtures by VARCHAR path relative to the worker's cwd. We omit
@@ -392,11 +428,11 @@ _WORDS_TAGS = {
         doc_md=(
             "# Extract PDF Word Boxes\n\n"
             "Returns every word in a PDF together with its bounding box, one row per word.\n\n"
-            "## Usage\n\n"
-            "```sql\n"
-            "SELECT * FROM pdf.words(pdf := 'doc.pdf') ORDER BY page, top, x0;\n"
-            "SELECT * FROM pdf.words(pdf := 'doc.pdf', page := 1);\n"
-            "```\n\n"
+            "## Example\n\n"
+            "Calling `pdf.main.words(pdf := 'invoice.pdf')` returns one row per word -- its `text` and "
+            "the box edges `x0`, `top`, `x1`, `bottom` (PDF points, origin top-left). Order by `top` "
+            "then `x0` to recover reading order, or pass `page := 1` to restrict to the first page. "
+            "Ready-to-run SQL lives in the example queries.\n\n"
             "## Columns\n\n" + _WORDS_COLUMNS_MD + "\n\n"
             "## Notes\n\n"
             "Coordinates are in PDF points with the origin at the top-left. Image-only (scanned) pages "
@@ -417,7 +453,7 @@ _WORDS_TAGS = {
         category="Content",
         relative_path=_SRC,
     ),
-    "vgi.result_columns_md": _WORDS_COLUMNS_MD,
+    "vgi.result_columns_schema": _WORDS_COLUMNS_SCHEMA,
     "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
 }
 
@@ -453,12 +489,18 @@ class WordsFunction(TableFunctionGenerator[_WordsArgs, ScanState]):
         tags = _WORDS_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.words(pdf := 'doc.pdf') ORDER BY page, top, x0",
-                description="All word boxes in reading order",
+                sql=(
+                    "SELECT page, text, x0, top "
+                    "FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY top, x0 LIMIT 5"
+                ),
+                description="First few word boxes in reading order",
             ),
             FunctionExample(
-                sql="SELECT * FROM pdf.words(pdf := 'doc.pdf', page := 1)",
-                description="Word boxes on page 1 only",
+                sql=(
+                    "SELECT count(*) AS words_on_page_1 "
+                    "FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"
+                ),
+                description="Count the words on page 1",
             ),
         ]
 
@@ -519,6 +561,21 @@ _TABLES_COLUMNS_MD = (
     "| `value` | VARCHAR | Cell text (NULL for an empty/missing cell). |"
 )
 
+# VGI307/VGI414: structured result schema (replaces retired `vgi.result_columns_md`).
+_TABLES_COLUMNS_SCHEMA = json.dumps(
+    [
+        {"name": "page", "type": "INTEGER", "description": "1-based page number the cell is on."},
+        {"name": "table_index", "type": "INTEGER", "description": "0-based table ordinal within the page."},
+        {
+            "name": "row",
+            "type": "INTEGER",
+            "description": '0-based row index in the table (SQL keyword: quote as "row").',
+        },
+        {"name": "col", "type": "INTEGER", "description": "0-based column index within the table."},
+        {"name": "value", "type": "VARCHAR", "description": "Cell text (NULL for an empty/missing cell)."},
+    ]
+)
+
 _TABLES_TAGS = {
     **object_tags(
         title="Extract PDF Table Cells",
@@ -539,12 +596,11 @@ _TABLES_TAGS = {
         doc_md=(
             "# Extract PDF Table Cells\n\n"
             "Detects tables in a PDF and returns their cells in long (one-row-per-cell) format.\n\n"
-            "## Usage\n\n"
-            "```sql\n"
-            'SELECT page, table_index, "row", col, value\n'
-            "FROM pdf.tables(pdf := 'report.pdf')\n"
-            'ORDER BY page, table_index, "row", col;\n'
-            "```\n\n"
+            "## Example\n\n"
+            "Calling `pdf.main.tables(pdf := 'report.pdf')` yields one row per cell, with `page`, "
+            '`table_index`, `row`, `col`, and `value`. Order by `page, table_index, "row", col` to '
+            "read cells in layout order, and pivot back to a grid with conditional aggregation over "
+            "`row`/`col`. Ready-to-run SQL lives in the example queries.\n\n"
             "## Columns\n\n" + _TABLES_COLUMNS_MD + "\n\n"
             "## Notes\n\n"
             'The `row` column is a SQL keyword -- quote it as `"row"`. Pages without a detectable table '
@@ -565,7 +621,7 @@ _TABLES_TAGS = {
         category="Content",
         relative_path=_SRC,
     ),
-    "vgi.result_columns_md": _TABLES_COLUMNS_MD,
+    "vgi.result_columns_schema": _TABLES_COLUMNS_SCHEMA,
 }
 
 
@@ -601,12 +657,16 @@ class TablesFunction(TableFunctionGenerator[_TablesArgs, ScanState]):
         tags = _TABLES_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT * FROM pdf.tables(pdf := 'report.pdf') ORDER BY page, table_index, row, col",
-                description="Every table cell as a tidy row",
+                sql=(
+                    'SELECT page, table_index, "row", col, value '
+                    "FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf') "
+                    'ORDER BY page, table_index, "row", col LIMIT 8'
+                ),
+                description="Table cells in layout order (long format)",
             ),
             FunctionExample(
-                sql="SELECT * FROM pdf.tables(pdf := 'report.pdf', page := 1)",
-                description="Table cells on page 1 only",
+                sql=("SELECT count(*) AS cells FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf', page := 1)"),
+                description="Count the detected table cells on page 1",
             ),
         ]
 
@@ -631,6 +691,147 @@ class TablesFunction(TableFunctionGenerator[_TablesArgs, ScanState]):
             state.rows_ipc = result_to_ipc(_build_tables(src, params.args.page, params.output_schema))
             state.started = True
         _stream_slice(state, params.output_schema, out)
+
+
+# ---------------------------------------------------------------------------
+# functions -- a browsable discovery VIEW (name, kind, category, summary)
+#
+# VGI146 is only cleared by a real table or view (it checks ``iter_table_like``);
+# a parameterless table function does NOT satisfy it (and VGI145/VGI311 flag a
+# no-arg table function or a function-wrapping view). So the worker's browsable
+# entry point is a VALUES-backed ``CatalogView``: it is a genuine view, scans
+# with no file/credential/network (clearing VGI911 for free), and gives an agent
+# a place to see what the worker offers before it has to guess any argument.
+# ---------------------------------------------------------------------------
+
+# The registry rows. Kept in step with the objects actually registered in
+# ``pdf_worker.py``; the row order groups by capability for easy browsing.
+_FUNCTIONS_ROWS: list[tuple[str, str, str, str]] = [
+    ("page_count", "scalar", "Structure", "Number of pages in a PDF."),
+    ("pages", "table function", "Structure", "One row per page with width, height, and rotation."),
+    ("words", "table function", "Content", "One row per word with its bounding box."),
+    ("tables", "table function", "Content", "Detected table cells in long (one-row-per-cell) format."),
+    ("form_fields", "scalar", "Content", "AcroForm field name to value, as a MAP."),
+    ("pdf_metadata", "scalar", "Metadata", "Document information dictionary (Title/Author/...), as a MAP."),
+    ("is_encrypted", "scalar", "Metadata", "Whether a PDF is encrypted."),
+    ("render_page", "scalar", "Rendering", "Render one page to a PNG image (BLOB)."),
+    ("functions", "view", "Discovery", "This registry: a browsable view of every object the worker exposes."),
+]
+
+
+def _sql_literal(value: str) -> str:
+    """Render ``value`` as a single-quoted SQL string literal (quotes doubled)."""
+    escaped = value.replace("'", "''")
+    return f"'{escaped}'"
+
+
+# A static VALUES scan is the whole view -- no PDF, file, or network is touched,
+# so a bare ``SELECT ... LIMIT 10`` probe (VGI911) answers instantly.
+_FUNCTIONS_VIEW_DEFINITION = (
+    "SELECT name, kind, category, summary FROM (VALUES\n    "
+    + ",\n    ".join("(" + ", ".join(_sql_literal(cell) for cell in row) + ")" for row in _FUNCTIONS_ROWS)
+    + "\n) AS t(name, kind, category, summary)"
+)
+
+_FUNCTIONS_COLUMN_COMMENTS = {
+    "name": "Object name (call it as pdf.main.<name>).",
+    "kind": "'scalar', 'table function', or 'view'.",
+    "category": "Category grouping: Structure, Content, Metadata, Rendering, or Discovery.",
+    "summary": "One-line description of what the object returns.",
+}
+
+_FUNCTIONS_COLUMNS_SCHEMA = json.dumps(
+    [
+        {"name": "name", "type": "VARCHAR", "description": _FUNCTIONS_COLUMN_COMMENTS["name"]},
+        {"name": "kind", "type": "VARCHAR", "description": _FUNCTIONS_COLUMN_COMMENTS["kind"]},
+        {"name": "category", "type": "VARCHAR", "description": _FUNCTIONS_COLUMN_COMMENTS["category"]},
+        {"name": "summary", "type": "VARCHAR", "description": _FUNCTIONS_COLUMN_COMMENTS["summary"]},
+    ]
+)
+
+# VGI502 object-level example queries: a JSON array of {description, sql}. Fully
+# catalog-qualified and column-projecting (never a bare SELECT *), so they count
+# toward this object's example coverage and run cleanly under --execute.
+_FUNCTIONS_EXAMPLE_QUERIES = json.dumps(
+    [
+        {
+            "description": "Browse every object the worker exposes, grouped by category",
+            "sql": "SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name",
+        },
+        {
+            "description": "List just the content-extraction objects",
+            "sql": ("SELECT name, summary FROM pdf.main.functions WHERE category = 'Content' ORDER BY name"),
+        },
+        {
+            "description": "Count how many objects the worker exposes",
+            "sql": "SELECT count(*) AS object_count FROM pdf.main.functions",
+        },
+    ]
+)
+
+_FUNCTIONS_TAGS = {
+    **object_tags(
+        title="List Worker Objects",
+        doc_llm=(
+            "# functions\n\n"
+            "A **browsable discovery view** listing every object this worker exposes, one row per "
+            "object: `name`, `kind` (`scalar`, `table function`, or `view`), `category` "
+            "(Structure/Content/Metadata/Rendering/Discovery), and a one-line `summary`. It is a plain "
+            "view -- read it as `pdf.main.functions` with no arguments.\n\n"
+            "Use it as the entry point when you do not yet know what the worker offers: read this view "
+            "first to pick the right object, then call that object with a PDF path or bytes. Filter by "
+            "`category` to narrow to a capability area, or by `kind` to separate per-row scalars from "
+            "set-returning table functions."
+        ),
+        doc_md=(
+            "# List Worker Objects\n\n"
+            "A static registry view of every object this worker exposes -- the browsable entry point for "
+            "discovering the surface before calling anything.\n\n"
+            "## Example\n\n"
+            "Reading `pdf.main.functions` returns one row per object with its `name`, `kind`, "
+            "`category`, and `summary`; keep rows whose `category` equals `Content` to see the "
+            "table-cell, word-box, and form-field extractors. Ready-to-run SQL lives in the example "
+            "queries.\n\n"
+            "## Columns\n\n"
+            "| column | type | description |\n"
+            "|---|---|---|\n"
+            "| `name` | VARCHAR | Object name (call it as `pdf.main.<name>`). |\n"
+            "| `kind` | VARCHAR | `scalar`, `table function`, or `view`. |\n"
+            "| `category` | VARCHAR | Structure, Content, Metadata, Rendering, or Discovery. |\n"
+            "| `summary` | VARCHAR | One-line description of what the object returns. |\n\n"
+            "## Notes\n\n"
+            "The view is static and offline -- it needs no PDF, file, or network access, so it always "
+            "answers instantly."
+        ),
+        keywords=[
+            "functions",
+            "discovery",
+            "registry",
+            "capabilities",
+            "catalog",
+            "list functions",
+            "browse",
+            "help",
+        ],
+        category="Discovery",
+        relative_path=_SRC,
+    ),
+    "vgi.result_columns_schema": _FUNCTIONS_COLUMNS_SCHEMA,
+    "vgi.example_queries": _FUNCTIONS_EXAMPLE_QUERIES,
+    # VGI123 classifying tags use BARE keys (not vgi.-namespaced) for faceting;
+    # mirror the schema's values so the view groups with the rest of the worker.
+    "domain": "documents",
+    "category": "discovery",
+    "topic": "pdf-structure-extraction",
+}
+
+FUNCTIONS_VIEW = View(
+    name="functions",
+    definition=_FUNCTIONS_VIEW_DEFINITION,
+    comment="Registry of every object this worker exposes (name, kind, category, summary).",
+    column_comments=dict(_FUNCTIONS_COLUMN_COMMENTS),
+    tags=_FUNCTIONS_TAGS,
+)
 
 
 TABLE_FUNCTIONS: list[type] = [

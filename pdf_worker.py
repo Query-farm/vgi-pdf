@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.9.0",
+#     "vgi-python[http]>=0.15.0",
 #     "pdfplumber>=0.11",
 #     "pypdfium2>=4.30",
 #     "pikepdf>=9",
@@ -46,7 +46,7 @@ from vgi.catalog import Catalog, Schema
 
 from vgi_pdf.meta import keywords_json
 from vgi_pdf.scalars import SCALAR_FUNCTIONS
-from vgi_pdf.tables import TABLE_FUNCTIONS
+from vgi_pdf.tables import FUNCTIONS_VIEW, TABLE_FUNCTIONS
 
 _FUNCTIONS: list[type] = [
     *SCALAR_FUNCTIONS,
@@ -166,16 +166,21 @@ _SCHEMA_KEYWORDS = keywords_json(
     ]
 )
 
-# VGI506 representative, catalog-qualified example queries for the schema.
+# VGI506 representative, catalog-qualified example queries for the schema. These
+# are fully qualified AND driven from committed fixtures (resolved from the
+# worker cwd = repo root) so they run cleanly if the linter executes them --
+# table functions raise on an unopenable path, so a placeholder like 'report.pdf'
+# would be a latent --execute failure.
 _SCHEMA_EXAMPLE_QUERIES = (
-    "SELECT pdf.main.page_count('report.pdf');\n"
-    "SELECT pdf.main.is_encrypted('secret.pdf');\n"
-    "SELECT pdf.main.pdf_metadata('report.pdf')['Title'];\n"
-    "SELECT pdf.main.form_fields('application.pdf');\n"
-    "SELECT pdf.main.render_page('report.pdf', 1);\n"
-    "SELECT * FROM pdf.main.pages(pdf := 'report.pdf');\n"
-    "SELECT * FROM pdf.main.words(pdf := 'report.pdf') ORDER BY page, top, x0;\n"
-    "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'report.pdf');"
+    "SELECT pdf.main.page_count('test/sql/data/multipage.pdf');\n"
+    "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf');\n"
+    "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title'];\n"
+    "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name'];\n"
+    "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1));\n"
+    "SELECT page, width, height FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf');\n"
+    "SELECT page, text FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY page, top, x0;\n"
+    "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf');\n"
+    "SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name;"
 )
 
 # VGI413 controlled-vocabulary category registry for the schema. Ordered JSON
@@ -200,6 +205,10 @@ _SCHEMA_CATEGORIES = json.dumps(
             "name": "Rendering",
             "description": "Rasterize a page to a PNG image.",
         },
+        {
+            "name": "Discovery",
+            "description": "Browsable registry of the objects this worker exposes.",
+        },
     ],
     separators=(",", ":"),
 )
@@ -215,19 +224,19 @@ _AGENT_TEST_TASKS = json.dumps(
         {
             "name": "count_pages",
             "prompt": ("How many pages does the PDF document at the path 'test/sql/data/multipage.pdf' have?"),
-            "reference_sql": "SELECT pdf.page_count('test/sql/data/multipage.pdf')",
+            "reference_sql": "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')",
             "ignore_column_names": True,
         },
         {
             "name": "document_title",
             "prompt": ("Read the document Title recorded in the metadata of the PDF at 'test/sql/data/meta.pdf'."),
-            "reference_sql": "SELECT pdf.pdf_metadata('test/sql/data/meta.pdf')['Title']",
+            "reference_sql": "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']",
             "ignore_column_names": True,
         },
         {
             "name": "is_encrypted",
             "prompt": "Is the PDF at 'test/sql/data/form.pdf' encrypted?",
-            "reference_sql": "SELECT pdf.is_encrypted('test/sql/data/form.pdf')",
+            "reference_sql": "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')",
             "ignore_column_names": True,
         },
         {
@@ -236,7 +245,7 @@ _AGENT_TEST_TASKS = json.dumps(
                 "The fillable PDF at 'test/sql/data/form.pdf' has an AcroForm field named 'full_name'. "
                 "What value is stored in it?"
             ),
-            "reference_sql": "SELECT pdf.form_fields('test/sql/data/form.pdf')['full_name']",
+            "reference_sql": "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']",
             "ignore_column_names": True,
         },
         {
@@ -249,6 +258,32 @@ _AGENT_TEST_TASKS = json.dumps(
             "name": "words_on_page",
             "prompt": ("How many words are on page 1 of the PDF at 'test/sql/data/words.pdf'?"),
             "reference_sql": ("SELECT count(*) FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"),
+            "ignore_column_names": True,
+        },
+        {
+            "name": "widest_page_width",
+            "prompt": (
+                "For the PDF at 'test/sql/data/multipage.pdf', report the width in PDF points of its widest page."
+            ),
+            "reference_sql": ("SELECT max(width) FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')"),
+            "ignore_column_names": True,
+        },
+        {
+            "name": "render_produces_png",
+            "prompt": (
+                "Render page 1 of the PDF at 'test/sql/data/multipage.pdf' to a PNG image. Does the "
+                "call return a non-empty image (more than zero bytes)? Answer true or false."
+            ),
+            "reference_sql": ("SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) > 0"),
+            "ignore_column_names": True,
+        },
+        {
+            "name": "count_worker_objects",
+            "prompt": (
+                "This worker publishes a discovery registry of the objects it exposes. How many objects "
+                "does that registry list?"
+            ),
+            "reference_sql": "SELECT count(*) FROM pdf.main.functions",
             "ignore_column_names": True,
         },
     ],
@@ -295,6 +330,7 @@ _PDF_CATALOG = Catalog(
             comment="Extract PDF structure: tables, word boxes, geometry, forms, metadata, rendering",
             tags=_SCHEMA_TAGS,
             functions=list(_FUNCTIONS),
+            views=[FUNCTIONS_VIEW],
         ),
     ],
 )
