@@ -58,6 +58,60 @@ from .schema_utils import field
 
 _SRC = "vgi_pdf/tables.py"
 
+
+def _examples_tag(entries: list[tuple[str, str]]) -> str:
+    """Serialize (description, sql) pairs into the ``vgi.example_queries`` JSON tag.
+
+    VGI515 requires every example to carry a description, but the native
+    ``duckdb_functions().examples`` carrier (from ``Meta.examples``) drops them.
+    Re-emitting the same queries here -- with SQL matching ``Meta.examples`` so the
+    linter dedupes the descriptionless native copies -- restores a description for
+    every example.
+    """
+    return json.dumps([{"description": d, "sql": s} for d, s in entries], separators=(",", ":"))
+
+
+_PAGES_EXAMPLE_QUERIES = _examples_tag(
+    [
+        (
+            "Per-page geometry of a multi-page PDF, ordered by page",
+            "SELECT page, width, height, rotation "
+            "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') ORDER BY page",
+        ),
+        (
+            "Count the landscape (wider-than-tall) pages",
+            "SELECT count(*) AS landscape_pages "
+            "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') WHERE width > height",
+        ),
+    ]
+)
+_WORDS_EXAMPLE_QUERIES = _examples_tag(
+    [
+        (
+            "First few word boxes in reading order",
+            "SELECT page, text, x0, top FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY top, x0 LIMIT 5",
+        ),
+        (
+            "Count the words on page 1",
+            "SELECT count(*) AS words_on_page_1 FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)",
+        ),
+    ]
+)
+_TABLES_EXAMPLE_QUERIES = _examples_tag(
+    [
+        (
+            "Table cells in layout order (long format)",
+            'SELECT page, table_index, "row", col, value '
+            "FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf') "
+            'ORDER BY page, table_index, "row", col LIMIT 8',
+        ),
+        (
+            "Count the detected table cells on page 1",
+            "SELECT count(*) AS cells FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf', page := 1)",
+        ),
+    ]
+)
+
 # ---------------------------------------------------------------------------
 # Externalized scan cursor (HTTP-continuation fix)
 # ---------------------------------------------------------------------------
@@ -275,6 +329,7 @@ _PAGES_TAGS = {
         relative_path=_SRC,
     ),
     "vgi.result_columns_schema": _PAGES_COLUMNS_SCHEMA,
+    "vgi.example_queries": _PAGES_EXAMPLE_QUERIES,
 }
 
 
@@ -455,6 +510,7 @@ _WORDS_TAGS = {
     ),
     "vgi.result_columns_schema": _WORDS_COLUMNS_SCHEMA,
     "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
+    "vgi.example_queries": _WORDS_EXAMPLE_QUERIES,
 }
 
 
@@ -622,6 +678,7 @@ _TABLES_TAGS = {
         relative_path=_SRC,
     ),
     "vgi.result_columns_schema": _TABLES_COLUMNS_SCHEMA,
+    "vgi.example_queries": _TABLES_EXAMPLE_QUERIES,
 }
 
 

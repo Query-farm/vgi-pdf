@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#     "vgi-python[http]>=0.15.0",
+#     "vgi-python[http]>=0.16.0",
 #     "pdfplumber>=0.11",
 #     "pypdfium2>=4.30",
 #     "pikepdf>=9",
@@ -57,8 +57,8 @@ _CATALOG_DESCRIPTION_LLM = (
     "Extract structure and layout from PDF documents in SQL: count pages, detect encryption, read "
     "document metadata (Title/Author/Producer/...) and AcroForm field values, render a page to a PNG "
     "image, and -- as table functions -- pull per-word bounding boxes, long-format table cells, and "
-    "per-page geometry (width/height/rotation). Accepts a PDF as a VARCHAR filesystem path or a BLOB of "
-    "raw bytes. This is layout/coordinates/tables/rendering, NOT plain-text extraction (use vgi-tika for "
+    "per-page geometry (width/height/rotation). Accepts a PDF as a `VARCHAR` filesystem path or a `BLOB` "
+    "of raw bytes. This is layout/coordinates/tables/rendering, NOT plain-text extraction (use vgi-tika for "
     "text). Use it to mine tables out of reports, locate words by coordinate, inspect form submissions, "
     "or thumbnail PDFs."
 )
@@ -166,21 +166,52 @@ _SCHEMA_KEYWORDS = keywords_json(
     ]
 )
 
-# VGI506 representative, catalog-qualified example queries for the schema. These
-# are fully qualified AND driven from committed fixtures (resolved from the
-# worker cwd = repo root) so they run cleanly if the linter executes them --
-# table functions raise on an unopenable path, so a placeholder like 'report.pdf'
-# would be a latent --execute failure.
-_SCHEMA_EXAMPLE_QUERIES = (
-    "SELECT pdf.main.page_count('test/sql/data/multipage.pdf');\n"
-    "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf');\n"
-    "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title'];\n"
-    "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name'];\n"
-    "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1));\n"
-    "SELECT page, width, height FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf');\n"
-    "SELECT page, text FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY page, top, x0;\n"
-    "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf');\n"
-    "SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name;"
+# VGI506/VGI515 representative, catalog-qualified example queries for the schema.
+# A JSON array of {description, sql} so every example carries a human-readable
+# description (VGI515). Fully qualified AND driven from committed fixtures
+# (resolved from the worker cwd = repo root) so they run cleanly if the linter
+# executes them -- table functions raise on an unopenable path, so a placeholder
+# like 'report.pdf' would be a latent --execute failure.
+_SCHEMA_EXAMPLE_QUERIES = json.dumps(
+    [
+        {
+            "description": "Count the pages in a PDF file.",
+            "sql": "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')",
+        },
+        {
+            "description": "Check whether a PDF is encrypted.",
+            "sql": "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')",
+        },
+        {
+            "description": "Read the Title from a PDF's document metadata.",
+            "sql": "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']",
+        },
+        {
+            "description": "Read a single AcroForm field value by name.",
+            "sql": "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']",
+        },
+        {
+            "description": "Render page 1 to a PNG and measure its byte size.",
+            "sql": "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1))",
+        },
+        {
+            "description": "List each page's width and height.",
+            "sql": "SELECT page, width, height FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')",
+        },
+        {
+            "description": "Extract word text in reading order.",
+            "sql": "SELECT page, text FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY page, top, x0",
+        },
+        {
+            "description": "Pull detected table cells in long format.",
+            "sql": "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')",
+        },
+        {
+            "description": "Browse the worker's object registry.",
+            "sql": "SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name",
+        },
+    ],
+    separators=(",", ":"),
 )
 
 # VGI413 controlled-vocabulary category registry for the schema. Ordered JSON

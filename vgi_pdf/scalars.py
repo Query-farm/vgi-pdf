@@ -33,6 +33,7 @@ never a hang. (Encrypted detection is the one case where "encrypted" is a
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Annotated, Any
 
@@ -55,6 +56,92 @@ from .meta import object_tags
 # ---------------------------------------------------------------------------
 
 _SRC = "vgi_pdf/scalars.py"
+
+
+def _examples_tag(entries: list[tuple[str, str]]) -> str:
+    """Serialize (description, sql) pairs into the ``vgi.example_queries`` JSON tag.
+
+    VGI515 requires every example to carry a human-readable description, but the
+    native ``duckdb_functions().examples`` carrier (populated from ``Meta.examples``)
+    drops descriptions. Emitting the same queries through the ``vgi.example_queries``
+    tag -- with SQL byte-identical to the ``Meta.examples`` entries so the linter
+    dedupes them by SQL -- restores a description for every example. For scalar
+    functions registered as several arity/type overloads under one ``Meta.name``,
+    the shared tag aggregates every overload's example.
+    """
+    return json.dumps([{"description": d, "sql": s} for d, s in entries], separators=(",", ":"))
+
+
+# Described-example tags, aggregated per function name across its overloads. The
+# ``sql`` here is byte-identical to the matching ``Meta.examples`` entries below.
+_PAGE_COUNT_EXAMPLES = _examples_tag(
+    [
+        (
+            "Page count of a PDF file (returns 3 for this fixture)",
+            "SELECT pdf.main.page_count('test/sql/data/multipage.pdf') AS pages",
+        ),
+        (
+            "Page count of a PDF held as bytes (NULL for non-PDF bytes)",
+            "SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages",
+        ),
+    ]
+)
+_IS_ENCRYPTED_EXAMPLES = _examples_tag(
+    [
+        (
+            "Whether a PDF file is encrypted (false for this fixture)",
+            "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf') AS encrypted",
+        ),
+        (
+            "Whether a PDF held as bytes is encrypted (NULL for non-PDF bytes)",
+            "SELECT pdf.main.is_encrypted('not-a-pdf'::BLOB) AS encrypted",
+        ),
+    ]
+)
+_PDF_METADATA_EXAMPLES = _examples_tag(
+    [
+        (
+            "Title from a PDF's metadata (returns 'Quarterly Report')",
+            "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title'] AS title",
+        ),
+        (
+            "Author from PDF bytes' metadata (NULL for non-PDF bytes)",
+            "SELECT pdf.main.pdf_metadata('not-a-pdf'::BLOB)['Author'] AS author",
+        ),
+    ]
+)
+_FORM_FIELDS_EXAMPLES = _examples_tag(
+    [
+        (
+            "Read the 'full_name' AcroForm field (returns 'Ada Lovelace')",
+            "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name'] AS full_name",
+        ),
+        (
+            "Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)",
+            "SELECT pdf.main.form_fields('not-a-pdf'::BLOB) AS fields",
+        ),
+    ]
+)
+_RENDER_PAGE_EXAMPLES = _examples_tag(
+    [
+        (
+            "Render page 1 to a PNG and report its byte size",
+            "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) AS png_bytes",
+        ),
+        (
+            "Render page 1 at 72 DPI and report its byte size",
+            "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1, 72)) AS png_bytes",
+        ),
+        (
+            "Rendering non-PDF bytes yields NULL rather than an error",
+            "SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable",
+        ),
+        (
+            "Rendering non-PDF bytes at 72 DPI yields NULL rather than an error",
+            "SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable",
+        ),
+    ]
+)
 
 _PAGE_COUNT_TAGS = object_tags(
     title="Count PDF Pages",
@@ -224,6 +311,16 @@ _RENDER_PAGE_TAGS = object_tags(
     category="Rendering",
     relative_path=_SRC,
 )
+
+# VGI515: attach the described-example tag to each function's shared tag dict.
+# Path/bytes overloads share one ``Meta.name`` (one catalog object), so the tag
+# aggregates every overload's example; the SQL matches ``Meta.examples`` so the
+# linter dedupes the descriptionless native copies against these described ones.
+_PAGE_COUNT_TAGS["vgi.example_queries"] = _PAGE_COUNT_EXAMPLES
+_IS_ENCRYPTED_TAGS["vgi.example_queries"] = _IS_ENCRYPTED_EXAMPLES
+_PDF_METADATA_TAGS["vgi.example_queries"] = _PDF_METADATA_EXAMPLES
+_FORM_FIELDS_TAGS["vgi.example_queries"] = _FORM_FIELDS_EXAMPLES
+_RENDER_PAGE_TAGS["vgi.example_queries"] = _RENDER_PAGE_EXAMPLES
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +562,7 @@ class FormFieldsBytesFunction(ScalarFunction):
         tags = _FORM_FIELDS_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.form_fields('not-a-pdf'::BLOB)",
+                sql="SELECT pdf.main.form_fields('not-a-pdf'::BLOB) AS fields",
                 description="Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)",
             ),
         ]
