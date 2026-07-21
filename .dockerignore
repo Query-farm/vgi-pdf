@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.pyc
+.git
+dist
+build
+*.egg-info
+.mypy_cache
+.ruff_cache
+.pytest_cache
+duckdb_unittest_tempdir
+.DS_Store
+tests
+test
+docs

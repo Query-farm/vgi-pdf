@@ -45,6 +45,11 @@ dependencies = [
 http = [
     "vgi-python[http]>=0.16.0",
 ]
+# HTTP-serving extra — installed by the Docker image (`pip install '.[serve]'`).
+# Alias of `http`: the container serves the worker over HTTP via `vgi-serve`.
+serve = [
+    "vgi-python[http]>=0.16.0",
+]
 dev = [
     "pytest>=8",
     "ruff",
@@ -65,6 +70,15 @@ type_consistency_ignore_names = ["pdf"]
 # engine, which is intrinsically a few seconds per call even on tiny fixtures.
 # Raise the slow-example threshold so these expected costs don't warn.
 slow_seconds = 25
+
+# Installed stdio entry point so DuckDB can ATTACH a wheel-installed worker:
+#   ATTACH 'pdf' (TYPE vgi, LOCATION 'vgi-pdf-worker');
+[project.scripts]
+vgi-pdf-worker = "vgi_pdf.worker:main"
+
+[project.urls]
+Repository = "https://github.com/Query-farm/vgi-pdf"
+Issues = "https://github.com/Query-farm/vgi-pdf/issues"
 
 [build-system]
 requires = ["hatchling"]

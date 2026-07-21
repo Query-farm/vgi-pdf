@@ -1,0 +1,41 @@
+# Copyright 2026 Query Farm LLC - https://query.farm
+#
+# Build + publish the multi-arch vgi-pdf image to ghcr.io. The heavy lifting
+# (multi-arch build -> /health smoke -> push-by-digest -> manifest -> cosign-sign) lives
+# in the shared reusable workflow Query-farm/vgi-actions/docker-publish.yml; this file
+# gates on the repo's own CI and supplies the worker-specific inputs.
+#
+# Tag-driven: vX.Y.Z -> :X.Y.Z / :X.Y / :latest; push to main -> :edge.
+name: Publish image to ghcr.io
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: [ci]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: Query-farm/vgi-actions/.github/workflows/docker-publish.yml@v1
+    secrets: inherit
+    with:
+      image_name: vgi-pdf
+      smoke_import: "vgi_pdf, pdfplumber, pypdfium2, pikepdf, PIL, pyarrow"
+      health_port: "8000"
+      version_check_cmd: "ci/check-version.sh"

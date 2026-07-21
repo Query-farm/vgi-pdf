@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launch wrapper so DuckDB's vgi extension can spawn this Python worker via a plain
+# filesystem LOCATION:
+#   ATTACH 'pdf' (TYPE vgi, LOCATION '/path/to/vgi-pdf/bin/vgi-pdf-worker');
+#
+# The worker speaks Arrow IPC over stdin/stdout (Worker.run()). `uv run` resolves the
+# project's environment (vgi-python + pdfplumber + pypdfium2 + pikepdf + Pillow +
+# pyarrow) and execs the console script; uv's own diagnostics go to stderr, so stdout
+# stays a clean Arrow IPC stream.
+set -euo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec uv run --project "$REPO_ROOT" --quiet vgi-pdf-worker "$@"

@@ -8,9 +8,11 @@ Contributor/agent notes. User-facing docs live in `README.md`; this is the
 A [VGI](https://query.farm) worker that extracts **PDF structure** — tables,
 word bounding boxes, page geometry, form fields, metadata, encryption status —
 and **renders pages to PNG**, as DuckDB functions. **Not** `vgi-tika`: tika does
-plain text; vgi-pdf does layout / tables / coordinates / rendering. `pdf_worker.py`
-assembles every function into one `pdf` catalog (single `main` schema) over
-stdio. Sibling style/tooling to `vgi-conform` / `vgi-calendar`.
+plain text; vgi-pdf does layout / tables / coordinates / rendering. `vgi_pdf/worker.py`
+assembles every function into one `pdf` catalog (single `main` schema); the repo-root
+`pdf_worker.py` is a thin PEP 723 shim re-exporting it (so `uv run pdf_worker.py` and the
+installed `vgi-pdf-worker` console script are equivalent entry points). Sibling
+style/tooling to `vgi-conform` / `vgi-calendar`.
 
 Backed by permissive libraries only — `pdfplumber` (MIT), `pypdfium2`
 (Apache-2.0), `pikepdf` (MPL-2.0), `Pillow` (MIT). **Never PyMuPDF/`fitz`**
@@ -19,8 +21,10 @@ Backed by permissive libraries only — `pdfplumber` (MIT), `pypdfium2`
 ## Layout
 
 ```
-pdf_worker.py          repo-root stdio entry point; PEP 723 inline deps; main()
+pdf_worker.py          repo-root PEP 723 shim; re-exports vgi_pdf.worker (uv run entry)
+bin/vgi-pdf-worker     launch wrapper (uv run vgi-pdf-worker) for a filesystem LOCATION
 vgi_pdf/
+  worker.py            catalog assembly + PdfWorker(Worker) + main(); wheel-importable entry
   core.py              pure PDF parse/render logic; no Arrow/VGI; unit-testable; hostile-input safe
   scalars.py           per-row scalars (path/bytes input-type overloads; render_page dpi overloads)
   tables.py            table functions: tables, words, pages (path + bytes overloads)

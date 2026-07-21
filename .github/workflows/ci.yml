@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths-ignore: ['README.md']
   workflow_dispatch:
+  # Allow the docker-publish + release workflows to gate on this CI by calling it.
+  workflow_call:
 
 permissions:
   contents: read
