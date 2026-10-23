@@ -47,6 +47,7 @@ def _scalar_bytes(
     results = list(
         client.scalar_function(
             function_name=name,
+            schema_path=["main"],
             input=iter([batch]),
             arguments=Arguments(positional=positional or []),
         )
@@ -132,6 +133,7 @@ class TestPathInput:
         results = list(
             client.scalar_function(
                 function_name="page_count",
+                schema_path=["main"],
                 input=iter([batch]),
                 arguments=Arguments(positional=[]),
             )

@@ -155,7 +155,7 @@ class ScanState(ArrowSerializableDataclass):
 def result_to_ipc(batch: pa.RecordBatch) -> bytes:
     """Serialize a single RecordBatch to Arrow IPC stream bytes."""
     sink = pa.BufferOutputStream()
-    with pa.ipc.new_stream(sink, batch.schema) as writer:  # type: ignore[no-untyped-call]
+    with pa.ipc.new_stream(sink, batch.schema) as writer:
         writer.write_batch(batch)
     result: bytes = sink.getvalue().to_pybytes()
     return result
@@ -163,7 +163,7 @@ def result_to_ipc(batch: pa.RecordBatch) -> bytes:
 
 def ipc_to_table(value: bytes) -> pa.Table:
     """Read Arrow IPC stream bytes back into a Table."""
-    reader = pa.ipc.open_stream(pa.BufferReader(value))  # type: ignore[no-untyped-call]
+    reader = pa.ipc.open_stream(pa.BufferReader(value))
     return reader.read_all()
 
 

@@ -1,0 +1,31 @@
+# Private graders for `vgi-lint simulate` (VGI416). The worker publishes only
+# task names and prompts in vgi.agent_test_tasks; the canonical solutions and
+# grading options stay here in the repo, never in the catalog metadata.
+tasks:
+  - name: count_pages
+    reference_sql: "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')"
+    ignore_column_names: true
+  - name: document_title
+    reference_sql: "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']"
+    ignore_column_names: true
+  - name: is_encrypted
+    reference_sql: "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')"
+    ignore_column_names: true
+  - name: form_field_value
+    reference_sql: "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']"
+    ignore_column_names: true
+  - name: table_cell_count
+    reference_sql: "SELECT count(*) FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')"
+    ignore_column_names: true
+  - name: words_on_page
+    reference_sql: "SELECT count(*) FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"
+    ignore_column_names: true
+  - name: widest_page_width
+    reference_sql: "SELECT max(width) FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')"
+    ignore_column_names: true
+  - name: render_produces_png
+    reference_sql: "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) > 0"
+    ignore_column_names: true
+  - name: count_worker_objects
+    reference_sql: "SELECT count(*) FROM pdf.main.functions"
+    ignore_column_names: true

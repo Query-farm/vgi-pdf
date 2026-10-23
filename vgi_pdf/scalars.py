@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import pyarrow as pa
 from vgi.arguments import ConstParam, Param, Returns
@@ -339,12 +339,12 @@ def _sources_from_bytes(arr: pa.BinaryArray) -> list[PdfSource | None]:
     return [PdfSource.from_bytes(x) for x in arr.to_pylist()]
 
 
-def _map(srcs: list[PdfSource | None], fn: Callable[[PdfSource], Any], arrow_type: pa.DataType) -> pa.Array:
+def _map(srcs: list[PdfSource | None], fn: Callable[[PdfSource], Any], arrow_type: pa.DataType) -> pa.Array[Any]:
     out = [None if s is None else fn(s) for s in srcs]
     return pa.array(out, type=arrow_type)
 
 
-def _map_map(srcs: list[PdfSource | None], fn: Callable[[PdfSource], dict[str, str] | None]) -> pa.Array:
+def _map_map(srcs: list[PdfSource | None], fn: Callable[[PdfSource], dict[str, str] | None]) -> pa.Array[Any]:
     out: list[list[tuple[str, str]] | None] = []
     for s in srcs:
         if s is None:
@@ -382,7 +382,7 @@ class PageCountPathFunction(ScalarFunction):
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.Int32Array, Returns(arrow_type=pa.int32())]:
         """Compute the output column for a batch of input rows."""
-        return _map(_sources_from_paths(pdf), core.page_count, pa.int32())
+        return cast(pa.Int32Array, _map(_sources_from_paths(pdf), core.page_count, pa.int32()))
 
 
 class PageCountBytesFunction(ScalarFunction):
@@ -407,7 +407,7 @@ class PageCountBytesFunction(ScalarFunction):
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.Int32Array, Returns(arrow_type=pa.int32())]:
         """Compute the output column for a batch of input rows."""
-        return _map(_sources_from_bytes(pdf), core.page_count, pa.int32())
+        return cast(pa.Int32Array, _map(_sources_from_bytes(pdf), core.page_count, pa.int32()))
 
 
 # ===========================================================================
@@ -437,7 +437,7 @@ class IsEncryptedPathFunction(ScalarFunction):
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
     ) -> Annotated[pa.BooleanArray, Returns(arrow_type=pa.bool_())]:
         """Compute the output column for a batch of input rows."""
-        return _map(_sources_from_paths(pdf), core.is_encrypted, pa.bool_())
+        return cast(pa.BooleanArray, _map(_sources_from_paths(pdf), core.is_encrypted, pa.bool_()))
 
 
 class IsEncryptedBytesFunction(ScalarFunction):
@@ -462,7 +462,7 @@ class IsEncryptedBytesFunction(ScalarFunction):
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
     ) -> Annotated[pa.BooleanArray, Returns(arrow_type=pa.bool_())]:
         """Compute the output column for a batch of input rows."""
-        return _map(_sources_from_bytes(pdf), core.is_encrypted, pa.bool_())
+        return cast(pa.BooleanArray, _map(_sources_from_bytes(pdf), core.is_encrypted, pa.bool_()))
 
 
 # ===========================================================================
@@ -490,7 +490,7 @@ class PdfMetadataPathFunction(ScalarFunction):
     @classmethod
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
-    ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+    ) -> Annotated[pa.Array[Any], Returns(arrow_type=_MAP_TYPE)]:
         """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_paths(pdf), core.pdf_metadata)
 
@@ -515,7 +515,7 @@ class PdfMetadataBytesFunction(ScalarFunction):
     @classmethod
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
-    ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+    ) -> Annotated[pa.Array[Any], Returns(arrow_type=_MAP_TYPE)]:
         """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_bytes(pdf), core.pdf_metadata)
 
@@ -545,7 +545,7 @@ class FormFieldsPathFunction(ScalarFunction):
     @classmethod
     def compute(
         cls, pdf: Annotated[pa.StringArray, Param(doc="Filesystem path to a PDF.")]
-    ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+    ) -> Annotated[pa.Array[Any], Returns(arrow_type=_MAP_TYPE)]:
         """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_paths(pdf), core.form_fields)
 
@@ -570,7 +570,7 @@ class FormFieldsBytesFunction(ScalarFunction):
     @classmethod
     def compute(
         cls, pdf: Annotated[pa.BinaryArray, Param(doc="Raw PDF bytes.", arrow_type=pa.binary())]
-    ) -> Annotated[pa.Array, Returns(arrow_type=_MAP_TYPE)]:
+    ) -> Annotated[pa.Array[Any], Returns(arrow_type=_MAP_TYPE)]:
         """Compute the output column for a batch of input rows."""
         return _map_map(_sources_from_bytes(pdf), core.form_fields)
 
@@ -583,7 +583,7 @@ class FormFieldsBytesFunction(ScalarFunction):
 # ===========================================================================
 
 
-def _render(srcs: list[PdfSource | None], pages: pa.Int32Array, dpi: int | None) -> pa.Array:
+def _render(srcs: list[PdfSource | None], pages: pa.Int32Array, dpi: int | None) -> pa.BinaryArray:
     page_list = pages.to_pylist()
     out: list[bytes | None] = []
     for s, pg in zip(srcs, page_list, strict=True):

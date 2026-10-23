@@ -239,30 +239,24 @@ _SCHEMA_CATEGORIES = json.dumps(
 )
 
 # VGI152/VGI920 fixed analyst-task suite. ``vgi-lint simulate`` runs an LLM
-# analyst against each prompt (seeing only the catalog metadata, never the
-# reference), then grades its answer against ``reference_sql``. Prompts are
-# self-contained and target the committed fixtures by path (resolved from the
-# worker cwd = repo root). ``ignore_column_names`` keeps grading on the values,
-# not on whatever alias the analyst happens to pick for a scalar result.
+# analyst against each prompt (seeing only the catalog metadata). Each task is a
+# public {name, prompt} object; prompts are self-contained and target the
+# committed fixtures by path (resolved from the worker cwd = repo root).
+# VGI416: the grader-only fields (``reference_sql``, ``ignore_column_names``) live
+# in the private ``vgi-agent-tests.yaml`` sidecar at the repo root, never in metadata.
 _AGENT_TEST_TASKS = json.dumps(
     [
         {
             "name": "count_pages",
             "prompt": ("How many pages does the PDF document at the path 'test/sql/data/multipage.pdf' have?"),
-            "reference_sql": "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')",
-            "ignore_column_names": True,
         },
         {
             "name": "document_title",
             "prompt": ("Read the document Title recorded in the metadata of the PDF at 'test/sql/data/meta.pdf'."),
-            "reference_sql": "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']",
-            "ignore_column_names": True,
         },
         {
             "name": "is_encrypted",
             "prompt": "Is the PDF at 'test/sql/data/form.pdf' encrypted?",
-            "reference_sql": "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')",
-            "ignore_column_names": True,
         },
         {
             "name": "form_field_value",
@@ -270,28 +264,20 @@ _AGENT_TEST_TASKS = json.dumps(
                 "The fillable PDF at 'test/sql/data/form.pdf' has an AcroForm field named 'full_name'. "
                 "What value is stored in it?"
             ),
-            "reference_sql": "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']",
-            "ignore_column_names": True,
         },
         {
             "name": "table_cell_count",
             "prompt": ("How many table cells are detected in the PDF at 'test/sql/data/table.pdf'?"),
-            "reference_sql": "SELECT count(*) FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')",
-            "ignore_column_names": True,
         },
         {
             "name": "words_on_page",
             "prompt": ("How many words are on page 1 of the PDF at 'test/sql/data/words.pdf'?"),
-            "reference_sql": ("SELECT count(*) FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"),
-            "ignore_column_names": True,
         },
         {
             "name": "widest_page_width",
             "prompt": (
                 "For the PDF at 'test/sql/data/multipage.pdf', report the width in PDF points of its widest page."
             ),
-            "reference_sql": ("SELECT max(width) FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')"),
-            "ignore_column_names": True,
         },
         {
             "name": "render_produces_png",
@@ -299,8 +285,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "Render page 1 of the PDF at 'test/sql/data/multipage.pdf' to a PNG image. Does the "
                 "call return a non-empty image (more than zero bytes)? Answer true or false."
             ),
-            "reference_sql": ("SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) > 0"),
-            "ignore_column_names": True,
         },
         {
             "name": "count_worker_objects",
@@ -308,8 +292,6 @@ _AGENT_TEST_TASKS = json.dumps(
                 "This worker publishes a discovery registry of the objects it exposes. How many objects "
                 "does that registry list?"
             ),
-            "reference_sql": "SELECT count(*) FROM pdf.main.functions",
-            "ignore_column_names": True,
         },
     ],
     separators=(",", ":"),
@@ -351,7 +333,7 @@ _PDF_CATALOG = Catalog(
     source_url=_REPO_URL,
     schemas=[
         Schema(
-            name="main",
+            path=["main"],
             comment="Extract PDF structure: tables, word boxes, geometry, forms, metadata, rendering",
             tags=_SCHEMA_TAGS,
             functions=list(_FUNCTIONS),
