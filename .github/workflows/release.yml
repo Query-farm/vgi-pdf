@@ -26,6 +26,8 @@ jobs:
     name: Build + attach distributions
     needs: [ci]
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.13"
     permissions:
       contents: write # attach assets to the Release
     steps:
