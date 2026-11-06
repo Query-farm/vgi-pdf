@@ -193,10 +193,10 @@ cat > "$STAGE/test/_warm.test" <<'WARM'
 statement ok
 INSTALL vgi FROM community;
 WARM
-"$HAYBARN_UNITTEST" "test/_warm.test" >/dev/null 2>&1 || echo "::warning::extension warm step did not fully succeed"
+"$HAYBARN_UNITTEST" --keep-home "test/_warm.test" >/dev/null 2>&1 || echo "::warning::extension warm step did not fully succeed"
 rm -f "$STAGE/test/_warm.test"
 
 # Run the whole suite in one invocation, streaming the runner's native
 # sqllogictest report. Any failed assertion exits non-zero and fails the job.
 echo "Running suite (transport: $TRANSPORT, worker: $VGI_PDF_WORKER) ..."
-"$HAYBARN_UNITTEST" "test/sql/*"
+"$HAYBARN_UNITTEST" --keep-home "test/sql/*"

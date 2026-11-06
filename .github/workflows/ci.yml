@@ -86,12 +86,12 @@ jobs:
         run: uv sync --frozen --python 3.13 --extra http
 
       - name: vgi-lint
-        uses: Query-farm/vgi-lint-check@v1
+        uses: Query-farm/vgi-lint-check@v2
         with:
           location: "uv run --python 3.13 pdf_worker.py"
           fail-on: info
 
-  # Resolve the latest published haybarn release once, so the whole matrix tests
+  # Resolve the newest haybarn 2.0 release once, so the whole matrix tests
   # the same version (and we never hardcode/pin it).
   resolve-haybarn:
     name: Resolve haybarn release
@@ -101,9 +101,17 @@ jobs:
     steps:
       - id: r
         run: |
-          REL=$(gh release view --repo Query-farm-haybarn/haybarn --json tagName --jq .tagName)
+          # haybarn 2.0 is RC-only, so `gh release view` (no tag) still returns the
+          # 1.5 line: pick the newest haybarn-v2.0.* tag (its community `vgi`
+          # extension is the one that speaks the worker's VGI protocol vgi.v3 / 3.1).
+          REL=$(gh release list --repo Query-farm-haybarn/haybarn --limit 30 --json tagName \
+            --jq '[.[].tagName | select(startswith("haybarn-v2.0"))][0]')
+          if [ -z "$REL" ] || [ "$REL" = "null" ]; then
+            echo "::error::no haybarn-v2.0.* release found" >&2
+            exit 1
+          fi
           echo "release=$REL" >> "$GITHUB_OUTPUT"
-          echo "Latest haybarn release: $REL"
+          echo "Latest haybarn 2.0 release: $REL"
         env:
           GH_TOKEN: ${{ github.token }}
 

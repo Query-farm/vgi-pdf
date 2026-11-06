@@ -10,7 +10,7 @@ statement ok
 LOAD vgi;
 
 statement ok
-ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION '${VGI_PDF_WORKER}');
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION '{VGI_PDF_WORKER}');
 
 # garbage.pdf is not a PDF at all. Scalars degrade to NULL, never a crash.
 
