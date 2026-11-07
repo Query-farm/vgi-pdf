@@ -43,7 +43,7 @@ from vgi.metadata import FunctionExample
 from vgi.scalar_function import ScalarFunction
 
 from . import core
-from .core import PdfSource
+from .core import PdfSource, fixture_blob
 from .meta import object_tags
 
 # ---------------------------------------------------------------------------
@@ -77,8 +77,8 @@ def _examples_tag(entries: list[tuple[str, str]]) -> str:
 _PAGE_COUNT_EXAMPLES = _examples_tag(
     [
         (
-            "Page count of a PDF file (returns 3 for this fixture)",
-            "SELECT pdf.main.page_count('test/sql/data/multipage.pdf') AS pages",
+            "Page count of a sample PDF fetched with read_blob (returns 3)",
+            f"SELECT pdf.main.page_count({fixture_blob('multipage.pdf')}) AS pages",
         ),
         (
             "Page count of a PDF held as bytes (NULL for non-PDF bytes)",
@@ -89,8 +89,8 @@ _PAGE_COUNT_EXAMPLES = _examples_tag(
 _IS_ENCRYPTED_EXAMPLES = _examples_tag(
     [
         (
-            "Whether a PDF file is encrypted (false for this fixture)",
-            "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf') AS encrypted",
+            "Whether a sample PDF fetched with read_blob is encrypted (false)",
+            f"SELECT pdf.main.is_encrypted({fixture_blob('form.pdf')}) AS encrypted",
         ),
         (
             "Whether a PDF held as bytes is encrypted (NULL for non-PDF bytes)",
@@ -101,8 +101,8 @@ _IS_ENCRYPTED_EXAMPLES = _examples_tag(
 _PDF_METADATA_EXAMPLES = _examples_tag(
     [
         (
-            "Title from a PDF's metadata (returns 'Quarterly Report')",
-            "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title'] AS title",
+            "Title from a sample PDF's metadata (returns 'Quarterly Report')",
+            f"SELECT pdf.main.pdf_metadata({fixture_blob('meta.pdf')})['Title'] AS title",
         ),
         (
             "Author from PDF bytes' metadata (NULL for non-PDF bytes)",
@@ -114,7 +114,7 @@ _FORM_FIELDS_EXAMPLES = _examples_tag(
     [
         (
             "Read the 'full_name' AcroForm field (returns 'Ada Lovelace')",
-            "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name'] AS full_name",
+            f"SELECT pdf.main.form_fields({fixture_blob('form.pdf')})['full_name'] AS full_name",
         ),
         (
             "Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)",
@@ -126,11 +126,11 @@ _RENDER_PAGE_EXAMPLES = _examples_tag(
     [
         (
             "Render page 1 to a PNG and report its byte size",
-            "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) AS png_bytes",
+            f"SELECT octet_length(pdf.main.render_page({fixture_blob('multipage.pdf')}, 1)) AS png_bytes",
         ),
         (
             "Render page 1 at 72 DPI and report its byte size",
-            "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1, 72)) AS png_bytes",
+            f"SELECT octet_length(pdf.main.render_page({fixture_blob('multipage.pdf')}, 1, 72)) AS png_bytes",
         ),
         (
             "Rendering non-PDF bytes yields NULL rather than an error",
@@ -372,8 +372,8 @@ class PageCountPathFunction(ScalarFunction):
         tags = _PAGE_COUNT_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.main.page_count('test/sql/data/multipage.pdf') AS pages",
-                description="Page count of a PDF file (returns 3 for this fixture)",
+                sql=f"SELECT pdf.main.page_count({fixture_blob('multipage.pdf')}) AS pages",
+                description="Page count of a sample PDF fetched with read_blob (returns 3)",
             ),
         ]
 
@@ -427,8 +427,8 @@ class IsEncryptedPathFunction(ScalarFunction):
         tags = _IS_ENCRYPTED_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.main.is_encrypted('test/sql/data/form.pdf') AS encrypted",
-                description="Whether a PDF file is encrypted (false for this fixture)",
+                sql=f"SELECT pdf.main.is_encrypted({fixture_blob('form.pdf')}) AS encrypted",
+                description="Whether a sample PDF fetched with read_blob is encrypted (false)",
             ),
         ]
 
@@ -482,8 +482,8 @@ class PdfMetadataPathFunction(ScalarFunction):
         tags = _PDF_METADATA_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title'] AS title",
-                description="Title from a PDF's metadata (returns 'Quarterly Report')",
+                sql=f"SELECT pdf.main.pdf_metadata({fixture_blob('meta.pdf')})['Title'] AS title",
+                description="Title from a sample PDF's metadata (returns 'Quarterly Report')",
             ),
         ]
 
@@ -537,7 +537,7 @@ class FormFieldsPathFunction(ScalarFunction):
         tags = _FORM_FIELDS_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name'] AS full_name",
+                sql=f"SELECT pdf.main.form_fields({fixture_blob('form.pdf')})['full_name'] AS full_name",
                 description="Read the 'full_name' AcroForm field (returns 'Ada Lovelace')",
             ),
         ]
@@ -606,7 +606,7 @@ class RenderPagePathFunction(ScalarFunction):
         tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) AS png_bytes",
+                sql=f"SELECT octet_length(pdf.main.render_page({fixture_blob('multipage.pdf')}, 1)) AS png_bytes",
                 description="Render page 1 to a PNG and report its byte size",
             ),
         ]
@@ -633,7 +633,7 @@ class RenderPagePathDpiFunction(ScalarFunction):
         tags = _RENDER_PAGE_TAGS
         examples = [
             FunctionExample(
-                sql="SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1, 72)) AS png_bytes",
+                sql=f"SELECT octet_length(pdf.main.render_page({fixture_blob('multipage.pdf')}, 1, 72)) AS png_bytes",
                 description="Render page 1 at 72 DPI and report its byte size",
             ),
         ]

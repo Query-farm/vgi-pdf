@@ -39,7 +39,6 @@ from typing import Annotated, ClassVar
 import pyarrow as pa
 from vgi.arguments import AnyArrow, AnyArrowValue, Arg
 from vgi.catalog import View
-from vgi.metadata import FunctionExample
 from vgi.table_function import (
     BindParams,
     ProcessParams,
@@ -52,62 +51,70 @@ from vgi_rpc import ArrowSerializableDataclass
 from vgi_rpc.rpc import OutputCollector
 
 from . import core
-from .core import PdfSource
+from .core import PdfSource, fixture_set
 from .meta import object_tags
 from .schema_utils import field
 
 _SRC = "vgi_pdf/tables.py"
 
 
-def _examples_tag(entries: list[tuple[str, str]]) -> str:
-    """Serialize (description, sql) pairs into the ``vgi.example_queries`` JSON tag.
+def _executable_tag(entries: list[tuple[str, str, str]]) -> str:
+    """Serialize (description, fixture, query) triples into ``vgi.executable_examples``.
 
-    VGI515 requires every example to carry a description, but the native
-    ``duckdb_functions().examples`` carrier (from ``Meta.examples``) drops them.
-    Re-emitting the same queries here -- with SQL matching ``Meta.examples`` so the
-    linter dedupes the descriptionless native copies -- restores a description for
-    every example.
+    Each example is a TWO-statement list run in order on one connection: a
+    ``SET VARIABLE doc`` step that fetches a committed fixture's bytes DuckDB-side
+    (``read_blob`` over HTTPS, pinned tag), then the query passing
+    ``pdf := getvariable('doc')``. DuckDB forbids a subquery argument to a table
+    function, so the bytes cannot be inlined; and ``vgi.example_queries`` holds a
+    single statement, so these examples live here only. They run from any
+    directory with no repo checkout.
     """
-    return json.dumps([{"description": d, "sql": s} for d, s in entries], separators=(",", ":"))
+    return json.dumps(
+        [{"description": d, "sql": [fixture_set(f), q]} for d, f, q in entries],
+        separators=(",", ":"),
+    )
 
 
-_PAGES_EXAMPLE_QUERIES = _examples_tag(
+_PAGES_EXECUTABLE_EXAMPLES = _executable_tag(
     [
         (
             "Per-page geometry of a multi-page PDF, ordered by page",
-            "SELECT page, width, height, rotation "
-            "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') ORDER BY page",
+            "multipage.pdf",
+            "SELECT page, width, height, rotation FROM pdf.main.pages(pdf := getvariable('doc')) ORDER BY page",
         ),
         (
             "Count the landscape (wider-than-tall) pages",
-            "SELECT count(*) AS landscape_pages "
-            "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') WHERE width > height",
+            "multipage.pdf",
+            "SELECT count(*) AS landscape_pages FROM pdf.main.pages(pdf := getvariable('doc')) WHERE width > height",
         ),
     ]
 )
-_WORDS_EXAMPLE_QUERIES = _examples_tag(
+_WORDS_EXECUTABLE_EXAMPLES = _executable_tag(
     [
         (
             "First few word boxes in reading order",
-            "SELECT page, text, x0, top FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY top, x0 LIMIT 5",
+            "words.pdf",
+            "SELECT page, text, x0, top FROM pdf.main.words(pdf := getvariable('doc')) ORDER BY top, x0 LIMIT 5",
         ),
         (
             "Count the words on page 1",
-            "SELECT count(*) AS words_on_page_1 FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)",
+            "words.pdf",
+            "SELECT count(*) AS words_on_page_1 FROM pdf.main.words(pdf := getvariable('doc'), page := 1)",
         ),
     ]
 )
-_TABLES_EXAMPLE_QUERIES = _examples_tag(
+_TABLES_EXECUTABLE_EXAMPLES = _executable_tag(
     [
         (
             "Table cells in layout order (long format)",
-            'SELECT page, table_index, "row", col, value '
-            "FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf') "
+            "table.pdf",
+            "SELECT page, table_index, \"row\", col, value FROM pdf.main.tables(pdf := getvariable('doc')) "
             'ORDER BY page, table_index, "row", col LIMIT 8',
         ),
         (
             "Count the detected table cells on page 1",
-            "SELECT count(*) AS cells FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf', page := 1)",
+            "table.pdf",
+            "SELECT count(*) AS cells FROM pdf.main.tables(pdf := getvariable('doc'), page := 1)",
         ),
     ]
 )
@@ -329,7 +336,7 @@ _PAGES_TAGS = {
         relative_path=_SRC,
     ),
     "vgi.result_columns_schema": _PAGES_COLUMNS_SCHEMA,
-    "vgi.example_queries": _PAGES_EXAMPLE_QUERIES,
+    "vgi.executable_examples": _PAGES_EXECUTABLE_EXAMPLES,
 }
 
 
@@ -360,22 +367,6 @@ class PagesFunction(TableFunctionGenerator[_PagesArgs, ScanState]):
         description = "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "structure"]
         tags = _PAGES_TAGS
-        examples = [
-            FunctionExample(
-                sql=(
-                    "SELECT page, width, height, rotation "
-                    "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') ORDER BY page"
-                ),
-                description="Per-page geometry of a multi-page PDF, ordered by page",
-            ),
-            FunctionExample(
-                sql=(
-                    "SELECT count(*) AS landscape_pages "
-                    "FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') WHERE width > height"
-                ),
-                description="Count the landscape (wider-than-tall) pages",
-            ),
-        ]
 
     @classmethod
     def cardinality(cls, params: BindParams[_PagesArgs]) -> TableCardinality:
@@ -445,26 +436,6 @@ _WORDS_COLUMNS_SCHEMA = json.dumps(
     ]
 )
 
-# VGI509 guaranteed-runnable examples (these are actually EXECUTED by the
-# linter). Each `sql` is catalog-qualified and self-contained, driving the
-# committed test fixtures by VARCHAR path relative to the worker's cwd. We omit
-# `expected_result` deliberately -- the linter only needs each query to run.
-_WORDS_EXECUTABLE_EXAMPLES = (
-    "["
-    '{"description": "Extract every word box from a small fixture PDF.",'
-    ' "sql": "SELECT page, text, x0, top FROM pdf.main.words(pdf := \'test/sql/data/words.pdf\')'
-    ' ORDER BY top, x0 LIMIT 5"},'
-    '{"description": "Restrict word boxes to a single page.",'
-    ' "sql": "SELECT count(*) AS n FROM pdf.main.words(pdf := \'test/sql/data/words.pdf\', page := 1)"},'
-    '{"description": "List page geometry for a multi-page PDF.",'
-    ' "sql": "SELECT page, width, height, rotation FROM pdf.main.pages(pdf := \'test/sql/data/multipage.pdf\')'
-    ' ORDER BY page"},'
-    '{"description": "Pull table cells in long format from a PDF that contains a table.",'
-    ' "sql": "SELECT page, table_index, \\"row\\", col, value FROM pdf.main.tables(pdf := \'test/sql/data/table.pdf\')'
-    ' ORDER BY page, table_index, \\"row\\", col LIMIT 8"}'
-    "]"
-)
-
 _WORDS_TAGS = {
     **object_tags(
         title="Extract PDF Word Boxes",
@@ -510,7 +481,6 @@ _WORDS_TAGS = {
     ),
     "vgi.result_columns_schema": _WORDS_COLUMNS_SCHEMA,
     "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
-    "vgi.example_queries": _WORDS_EXAMPLE_QUERIES,
 }
 
 
@@ -543,22 +513,6 @@ class WordsFunction(TableFunctionGenerator[_WordsArgs, ScanState]):
         description = "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path or BLOB bytes)"
         categories = ["pdf", "words"]
         tags = _WORDS_TAGS
-        examples = [
-            FunctionExample(
-                sql=(
-                    "SELECT page, text, x0, top "
-                    "FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY top, x0 LIMIT 5"
-                ),
-                description="First few word boxes in reading order",
-            ),
-            FunctionExample(
-                sql=(
-                    "SELECT count(*) AS words_on_page_1 "
-                    "FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"
-                ),
-                description="Count the words on page 1",
-            ),
-        ]
 
     @classmethod
     def cardinality(cls, params: BindParams[_WordsArgs]) -> TableCardinality:
@@ -678,7 +632,7 @@ _TABLES_TAGS = {
         relative_path=_SRC,
     ),
     "vgi.result_columns_schema": _TABLES_COLUMNS_SCHEMA,
-    "vgi.example_queries": _TABLES_EXAMPLE_QUERIES,
+    "vgi.executable_examples": _TABLES_EXECUTABLE_EXAMPLES,
 }
 
 
@@ -712,20 +666,6 @@ class TablesFunction(TableFunctionGenerator[_TablesArgs, ScanState]):
         )
         categories = ["pdf", "tables"]
         tags = _TABLES_TAGS
-        examples = [
-            FunctionExample(
-                sql=(
-                    'SELECT page, table_index, "row", col, value '
-                    "FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf') "
-                    'ORDER BY page, table_index, "row", col LIMIT 8'
-                ),
-                description="Table cells in layout order (long format)",
-            ),
-            FunctionExample(
-                sql=("SELECT count(*) AS cells FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf', page := 1)"),
-                description="Count the detected table cells on page 1",
-            ),
-        ]
 
     @classmethod
     def cardinality(cls, params: BindParams[_TablesArgs]) -> TableCardinality:

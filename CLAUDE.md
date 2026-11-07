@@ -186,3 +186,11 @@ Test PDFs are generated deterministically in-test with `reportlab` (a dev-only
 dep); a few tiny fixtures are committed under `test/sql/data/` for the SQL E2E
 suite. Everything is offline/hermetic. If `make test-sql` flakes, re-run 2–3× —
 only a consistent failure is real.
+
+The catalog examples (`vgi.example_queries` / `vgi.executable_examples`) and the
+agent-test graders read those same fixtures over HTTPS from a pinned tag
+(`core.FIXTURES_URL`, `read_blob` DuckDB-side) so they run for an installed worker
+with no checkout. Scalars take the bytes inline; table functions take `pdf :=` as a
+constant (no subquery allowed), so their examples are two-statement
+`SET VARIABLE doc = ...` + `pdf := getvariable('doc')` lists in
+`vgi.executable_examples` only. Keep the URL on a tag, never `main`.

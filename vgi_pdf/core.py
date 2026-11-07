@@ -45,10 +45,13 @@ from pdfplumber.pdf import PDF as PdfPlumberDocument
 
 __all__ = [
     "DEFAULT_DPI",
+    "FIXTURES_URL",
     "MAX_RENDER_DPI",
     "MAX_RENDER_PIXELS",
     "PdfError",
     "PdfSource",
+    "fixture_blob",
+    "fixture_set",
     "form_fields",
     "is_encrypted",
     "page_count",
@@ -66,6 +69,28 @@ DEFAULT_DPI = 150
 MAX_RENDER_DPI = 300
 # ~ A4 at 300 DPI is roughly 2480x3508 ≈ 8.7M px; allow a little headroom.
 MAX_RENDER_PIXELS = 25_000_000
+
+
+# Committed SQL fixtures (test/sql/data/), served over HTTPS from a pinned release
+# tag (never ``main``) so the URL is immutable. The catalog examples fetch them
+# DuckDB-side with ``read_blob(url)`` and pass the bytes to the worker, so every
+# example runs from any directory with no repo checkout. The worker itself still
+# never fetches URLs.
+FIXTURES_URL = "https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data"
+
+
+def fixture_blob(name: str) -> str:
+    """SQL scalar subquery yielding a committed fixture's bytes (``read_blob`` over HTTPS)."""
+    return f"(SELECT content FROM read_blob('{FIXTURES_URL}/{name}'))"
+
+
+def fixture_set(name: str) -> str:
+    """SQL statement loading a committed fixture's bytes into session variable ``doc``.
+
+    Table functions take ``pdf :=`` as a constant (DuckDB forbids a subquery
+    argument), so their examples load the bytes first and pass ``getvariable('doc')``.
+    """
+    return f"SET VARIABLE doc = {fixture_blob(name)}"
 
 
 class PdfError(Exception):

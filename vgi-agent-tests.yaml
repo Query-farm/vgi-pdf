@@ -3,28 +3,34 @@
 # grading options stay here in the repo, never in the catalog metadata.
 tasks:
   - name: count_pages
-    reference_sql: "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')"
+    reference_sql: "SELECT pdf.main.page_count((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')))"
     ignore_column_names: true
   - name: document_title
-    reference_sql: "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']"
+    reference_sql: "SELECT pdf.main.pdf_metadata((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf')))['Title']"
     ignore_column_names: true
   - name: is_encrypted
-    reference_sql: "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')"
+    reference_sql: "SELECT pdf.main.is_encrypted((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf')))"
     ignore_column_names: true
   - name: form_field_value
-    reference_sql: "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']"
+    reference_sql: "SELECT pdf.main.form_fields((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf')))['full_name']"
     ignore_column_names: true
   - name: table_cell_count
-    reference_sql: "SELECT count(*) FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')"
+    reference_sql:
+      - "SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'))"
+      - "SELECT count(*) FROM pdf.main.tables(pdf := getvariable('doc'))"
     ignore_column_names: true
   - name: words_on_page
-    reference_sql: "SELECT count(*) FROM pdf.main.words(pdf := 'test/sql/data/words.pdf', page := 1)"
+    reference_sql:
+      - "SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/words.pdf'))"
+      - "SELECT count(*) FROM pdf.main.words(pdf := getvariable('doc'), page := 1)"
     ignore_column_names: true
   - name: widest_page_width
-    reference_sql: "SELECT max(width) FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')"
+    reference_sql:
+      - "SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))"
+      - "SELECT max(width) FROM pdf.main.pages(pdf := getvariable('doc'))"
     ignore_column_names: true
   - name: render_produces_png
-    reference_sql: "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1)) > 0"
+    reference_sql: "SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) > 0"
     ignore_column_names: true
   - name: count_worker_objects
     reference_sql: "SELECT count(*) FROM pdf.main.functions"

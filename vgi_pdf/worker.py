@@ -38,6 +38,7 @@ import json
 from vgi import Worker
 from vgi.catalog import Catalog, Schema
 
+from vgi_pdf.core import FIXTURES_URL, fixture_blob, fixture_set
 from vgi_pdf.meta import keywords_json
 from vgi_pdf.scalars import SCALAR_FUNCTIONS
 from vgi_pdf.tables import FUNCTIONS_VIEW, TABLE_FUNCTIONS
@@ -162,43 +163,53 @@ _SCHEMA_KEYWORDS = keywords_json(
 
 # VGI506/VGI515 representative, catalog-qualified example queries for the schema.
 # A JSON array of {description, sql} so every example carries a human-readable
-# description (VGI515). Fully qualified AND driven from committed fixtures
-# (resolved from the worker cwd = repo root) so they run cleanly if the linter
-# executes them -- table functions raise on an unopenable path, so a placeholder
-# like 'report.pdf' would be a latent --execute failure.
+# description (VGI515). They read the committed fixtures over HTTPS from a pinned
+# tag (``read_blob`` DuckDB-side), so they run from any directory without a repo
+# checkout: scalars take the bytes inline; table functions take ``pdf :=`` as a
+# constant (no subquery allowed), so those examples load the bytes into a session
+# variable first and are shown as a two-statement script.
 _SCHEMA_EXAMPLE_QUERIES = json.dumps(
     [
         {
             "description": "Count the pages in a PDF file.",
-            "sql": "SELECT pdf.main.page_count('test/sql/data/multipage.pdf')",
+            "sql": f"SELECT pdf.main.page_count({fixture_blob('multipage.pdf')})",
         },
         {
             "description": "Check whether a PDF is encrypted.",
-            "sql": "SELECT pdf.main.is_encrypted('test/sql/data/form.pdf')",
+            "sql": f"SELECT pdf.main.is_encrypted({fixture_blob('form.pdf')})",
         },
         {
             "description": "Read the Title from a PDF's document metadata.",
-            "sql": "SELECT pdf.main.pdf_metadata('test/sql/data/meta.pdf')['Title']",
+            "sql": f"SELECT pdf.main.pdf_metadata({fixture_blob('meta.pdf')})['Title']",
         },
         {
             "description": "Read a single AcroForm field value by name.",
-            "sql": "SELECT pdf.main.form_fields('test/sql/data/form.pdf')['full_name']",
+            "sql": f"SELECT pdf.main.form_fields({fixture_blob('form.pdf')})['full_name']",
         },
         {
             "description": "Render page 1 to a PNG and measure its byte size.",
-            "sql": "SELECT octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', 1))",
+            "sql": f"SELECT octet_length(pdf.main.render_page({fixture_blob('multipage.pdf')}, 1))",
         },
         {
             "description": "List each page's width and height.",
-            "sql": "SELECT page, width, height FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf')",
+            "sql": (
+                f"{fixture_set('multipage.pdf')};\n"
+                "SELECT page, width, height FROM pdf.main.pages(pdf := getvariable('doc'))"
+            ),
         },
         {
             "description": "Extract word text in reading order.",
-            "sql": "SELECT page, text FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') ORDER BY page, top, x0",
+            "sql": (
+                f"{fixture_set('words.pdf')};\n"
+                "SELECT page, text FROM pdf.main.words(pdf := getvariable('doc')) ORDER BY page, top, x0"
+            ),
         },
         {
             "description": "Pull detected table cells in long format.",
-            "sql": "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf')",
+            "sql": (
+                f"{fixture_set('table.pdf')};\n"
+                "SELECT page, \"row\", col, value FROM pdf.main.tables(pdf := getvariable('doc'))"
+            ),
         },
         {
             "description": "Browse the worker's object registry.",
@@ -241,48 +252,48 @@ _SCHEMA_CATEGORIES = json.dumps(
 # VGI152/VGI920 fixed analyst-task suite. ``vgi-lint simulate`` runs an LLM
 # analyst against each prompt (seeing only the catalog metadata). Each task is a
 # public {name, prompt} object; prompts are self-contained and target the
-# committed fixtures by path (resolved from the worker cwd = repo root).
+# committed fixtures by their pinned HTTPS URL, so they need no repo checkout.
 # VGI416: the grader-only fields (``reference_sql``, ``ignore_column_names``) live
 # in the private ``vgi-agent-tests.yaml`` sidecar at the repo root, never in metadata.
 _AGENT_TEST_TASKS = json.dumps(
     [
         {
             "name": "count_pages",
-            "prompt": ("How many pages does the PDF document at the path 'test/sql/data/multipage.pdf' have?"),
+            "prompt": (f"How many pages does the PDF document at '{FIXTURES_URL}/multipage.pdf' have?"),
         },
         {
             "name": "document_title",
-            "prompt": ("Read the document Title recorded in the metadata of the PDF at 'test/sql/data/meta.pdf'."),
+            "prompt": (f"Read the document Title recorded in the metadata of the PDF at '{FIXTURES_URL}/meta.pdf'."),
         },
         {
             "name": "is_encrypted",
-            "prompt": "Is the PDF at 'test/sql/data/form.pdf' encrypted?",
+            "prompt": f"Is the PDF at '{FIXTURES_URL}/form.pdf' encrypted?",
         },
         {
             "name": "form_field_value",
             "prompt": (
-                "The fillable PDF at 'test/sql/data/form.pdf' has an AcroForm field named 'full_name'. "
+                f"The fillable PDF at '{FIXTURES_URL}/form.pdf' has an AcroForm field named 'full_name'. "
                 "What value is stored in it?"
             ),
         },
         {
             "name": "table_cell_count",
-            "prompt": ("How many table cells are detected in the PDF at 'test/sql/data/table.pdf'?"),
+            "prompt": (f"How many table cells are detected in the PDF at '{FIXTURES_URL}/table.pdf'?"),
         },
         {
             "name": "words_on_page",
-            "prompt": ("How many words are on page 1 of the PDF at 'test/sql/data/words.pdf'?"),
+            "prompt": (f"How many words are on page 1 of the PDF at '{FIXTURES_URL}/words.pdf'?"),
         },
         {
             "name": "widest_page_width",
             "prompt": (
-                "For the PDF at 'test/sql/data/multipage.pdf', report the width in PDF points of its widest page."
+                f"For the PDF at '{FIXTURES_URL}/multipage.pdf', report the width in PDF points of its widest page."
             ),
         },
         {
             "name": "render_produces_png",
             "prompt": (
-                "Render page 1 of the PDF at 'test/sql/data/multipage.pdf' to a PNG image. Does the "
+                f"Render page 1 of the PDF at '{FIXTURES_URL}/multipage.pdf' to a PNG image. Does the "
                 "call return a non-empty image (more than zero bytes)? Answer true or false."
             ),
         },
