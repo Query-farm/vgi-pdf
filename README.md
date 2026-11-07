@@ -23,7 +23,7 @@ Google PDFium), and [`pikepdf`](https://pypi.org/project/pikepdf/) (MPL-2.0).
 
 ```sql
 INSTALL vgi FROM community; LOAD vgi;
-ATTACH 'pdf' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.2.0 vgi-pdf-worker');
+ATTACH 'pdf' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.2.1 vgi-pdf-worker');
 
 -- Scalars: one PDF in, one value out
 SELECT pdf.page_count('report.pdf');                 -- 3
@@ -56,7 +56,7 @@ The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.2.0 vgi-pdf-worker');
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.2.1 vgi-pdf-worker');
 
 -- Count the pages in a PDF file.
 SELECT pdf.main.page_count('multipage.pdf');
@@ -65,14 +65,14 @@ SELECT pdf.main.page_count('multipage.pdf');
 SELECT pdf.main.is_encrypted('form.pdf');
 ```
 
-Change `@v0.2.0` to move to a newer release.
+Change `@v0.2.1` to move to a newer release.
 
 ### Other ways to run it
 
 - **Docker** (the image bundles the worker and its dependencies):
 
   ```sql
-  ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-pdf:0.2.0');
+  ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-pdf:0.2.1');
   ```
 
 - **From a local checkout** (`git clone https://github.com/Query-farm/vgi-pdf`), point `LOCATION` at `uv run --project /path/to/vgi-pdf vgi-pdf-worker`.
