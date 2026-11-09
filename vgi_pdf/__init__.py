@@ -18,4 +18,4 @@ tika does plain text; ``vgi-pdf`` does layout / tables / coordinates / rendering
 
 from __future__ import annotations
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"

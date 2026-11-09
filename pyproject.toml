@@ -1,6 +1,6 @@
 [project]
 name = "vgi-pdf"
-version = "0.2.1"
+version = "0.3.0"
 description = "Extract PDF structure (tables, word boxes, geometry, forms, rendering) for DuckDB via VGI"
 readme = "README.md"
 keywords = [
