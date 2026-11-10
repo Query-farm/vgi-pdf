@@ -310,6 +310,10 @@ _AGENT_TEST_TASKS = json.dumps(
 
 _CATALOG_TAGS = {
     "vgi.title": "PDF Structure & Rendering",
+    "vgi.subtitle": (
+        "Pull tables, words with their positions, page geometry, form fields and metadata out of PDFs, "
+        "and render pages to PNG."
+    ),
     "vgi.agent_test_tasks": _AGENT_TEST_TASKS,
     "vgi.keywords": _CATALOG_KEYWORDS,
     "vgi.doc_llm": _CATALOG_DESCRIPTION_LLM,
@@ -322,7 +326,7 @@ _CATALOG_TAGS = {
 }
 
 _SCHEMA_TAGS = {
-    "vgi.title": "PDF — main",
+    "vgi.title": "PDF Functions",
     "vgi.keywords": _SCHEMA_KEYWORDS,
     "vgi.categories": _SCHEMA_CATEGORIES,
     # VGI123 classifying tags use BARE keys (not vgi.-namespaced) for faceting.
