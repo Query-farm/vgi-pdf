@@ -179,7 +179,7 @@ uv run ruff check . && uv run mypy vgi_pdf/
 
 `make test-sql` sets `VGI_PDF_WORKER="uv run --python 3.13 pdf_worker.py"`, puts
 `~/.local/bin` on PATH, and runs `haybarn-unittest --keep-home --test-dir . "test/sql/*"`.
-Install the runner once with `uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'` (haybarn 2.0: its community `vgi` extension speaks the worker's protocol, vgi.v3 / 3.2). CI
+Install the runner once with `uv tool install --prerelease allow 'haybarn-unittest>=2.0.0rc11,<2.1'` (haybarn 2.0: its community `vgi` extension speaks the worker's protocol, vgi.v3 / 3.3). CI
 (`.github/workflows/ci.yml`) runs unit + lint + a gated `e2e` job.
 
 Test PDFs are generated deterministically in-test with `reportlab` (a dev-only
