@@ -40,8 +40,8 @@ from vgi.catalog import Catalog, Schema
 
 from vgi_pdf.core import FIXTURES_URL, fixture_blob, fixture_set
 from vgi_pdf.meta import keywords_json
-from vgi_pdf.scalars import SCALAR_FUNCTIONS
-from vgi_pdf.tables import FUNCTIONS_VIEW, TABLE_FUNCTIONS
+from vgi_pdf.scalars import PDF_INVENTORY_EXAMPLE, SCALAR_FUNCTIONS
+from vgi_pdf.tables import COMPOSED_EXAMPLES, FUNCTIONS_VIEW, TABLE_FUNCTIONS, example_query
 
 _FUNCTIONS: list[type] = [
     *SCALAR_FUNCTIONS,
@@ -215,6 +215,10 @@ _SCHEMA_EXAMPLE_QUERIES = json.dumps(
             "description": "Browse the worker's object registry.",
             "sql": "SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name",
         },
+        # Composed examples (several of the worker's objects in one query); the SQL
+        # is defined once beside the object that drives it and shared from there.
+        {"description": PDF_INVENTORY_EXAMPLE[0], "sql": PDF_INVENTORY_EXAMPLE[1]},
+        *(example_query(entry) for entry in COMPOSED_EXAMPLES),
     ],
     separators=(",", ":"),
 )
@@ -295,6 +299,21 @@ _AGENT_TEST_TASKS = json.dumps(
             "prompt": (
                 f"Render page 1 of the PDF at '{FIXTURES_URL}/multipage.pdf' to a PNG image. Does the "
                 "call return a non-empty image (more than zero bytes)? Answer true or false."
+            ),
+        },
+        {
+            "name": "words_in_top_quarter",
+            "prompt": (
+                f"In the PDF at '{FIXTURES_URL}/table.pdf', how many words sit in the top quarter of their "
+                "page, i.e. the word's top edge is less than 25% of that page's height? Answer with a single number."
+            ),
+        },
+        {
+            "name": "pages_by_author",
+            "prompt": (
+                f"Consider these four PDFs: '{FIXTURES_URL}/multipage.pdf', '{FIXTURES_URL}/meta.pdf', "
+                f"'{FIXTURES_URL}/table.pdf', and '{FIXTURES_URL}/form.pdf'. What is the total number of pages "
+                "across the documents whose metadata Author is 'Ada Lovelace'? Answer with a single number."
             ),
         },
         {

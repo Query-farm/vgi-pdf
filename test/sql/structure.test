@@ -119,5 +119,30 @@ ORDER BY page;
 2	612.0	792.0	0
 3	612.0	792.0	0
 
+# ---- composed: the table functions join to each other ------------------------
+
+# words() joined to pages(): the header band (top 10% of the page height).
+query IT
+SELECT w.page, w.text
+FROM pdf.words(pdf := 'test/sql/data/words.pdf') AS w
+JOIN pdf.pages(pdf := 'test/sql/data/words.pdf') AS p ON p.page = w.page
+WHERE w.top < 0.1 * p.height
+ORDER BY w.page, w.top, w.x0;
+----
+1	Hello
+1	World
+
+# tables() joined to words(): each cell's position on the page.
+query IITR
+SELECT t."row", t.col, t.value, w.x0
+FROM pdf.tables(pdf := 'test/sql/data/table.pdf') AS t
+JOIN pdf.words(pdf := 'test/sql/data/table.pdf') AS w ON w.page = t.page AND w.text = t.value
+ORDER BY t."row", t.col;
+----
+0	0	Name	110.0
+0	1	Age	260.0
+1	0	Ada	110.0
+1	1	36	260.0
+
 statement ok
 DETACH pdf;

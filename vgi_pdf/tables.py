@@ -51,7 +51,7 @@ from vgi_rpc import ArrowSerializableDataclass
 from vgi_rpc.rpc import OutputCollector
 
 from . import core
-from .core import PdfSource, fixture_set
+from .core import PdfSource, fixture_script, fixture_set
 from .meta import object_tags
 from .schema_utils import field
 
@@ -65,14 +65,64 @@ def _executable_tag(entries: list[tuple[str, str, str]]) -> str:
     ``SET VARIABLE doc`` step that fetches a committed fixture's bytes DuckDB-side
     (``read_blob`` over HTTPS, pinned tag), then the query passing
     ``pdf := getvariable('doc')``. DuckDB forbids a subquery argument to a table
-    function, so the bytes cannot be inlined; and ``vgi.example_queries`` holds a
-    single statement, so these examples live here only. They run from any
-    directory with no repo checkout.
+    function, so the bytes cannot be inlined. They run from any directory with
+    no repo checkout.
     """
     return json.dumps(
         [{"description": d, "sql": [fixture_set(f), q]} for d, f, q in entries],
         separators=(",", ":"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Composed examples: one query combining two of this worker's objects. Each is a
+# (description, fixture, query) triple defined ONCE here and referenced from
+# every carrier -- the driving table function's ``vgi.example_queries`` (what the
+# vgi-lint agent simulator shows), the schema-level list in ``worker.py``, and,
+# when deterministic, ``vgi.executable_examples``. ``pdf :=`` must be a constant,
+# so each reads the fixture into ``doc`` once and every call reuses it.
+# ---------------------------------------------------------------------------
+
+PAGE_THUMBNAILS_EXAMPLE = (
+    "Render a 36-DPI PNG thumbnail of every page that pages() lists, next to the page's width and height",
+    "multipage.pdf",
+    "SELECT p.page, p.width, p.height, "
+    "octet_length(pdf.main.render_page(getvariable('doc'), p.page, 36)) AS thumbnail_png_bytes "
+    "FROM pdf.main.pages(pdf := getvariable('doc')) AS p ORDER BY p.page",
+)
+HEADER_BAND_WORDS_EXAMPLE = (
+    "Find the words in each page's header band (top 10% of the page height), joining words() to pages() for the height",
+    "words.pdf",
+    "SELECT w.page, w.text, round(w.top / p.height, 3) AS top_fraction "
+    "FROM pdf.main.words(pdf := getvariable('doc')) AS w "
+    "JOIN pdf.main.pages(pdf := getvariable('doc')) AS p ON p.page = w.page "
+    "WHERE w.top < 0.1 * p.height ORDER BY w.page, w.top, w.x0",
+)
+TABLE_CELL_POSITIONS_EXAMPLE = (
+    "Locate each table cell on the page: join tables() cells to words() boxes on matching text (single-word cells)",
+    "table.pdf",
+    'SELECT t."row", t.col, t.value, w.x0, round(w.top, 1) AS top '
+    "FROM pdf.main.tables(pdf := getvariable('doc')) AS t "
+    "JOIN pdf.main.words(pdf := getvariable('doc')) AS w ON w.page = t.page AND w.text = t.value "
+    'ORDER BY t.page, t.table_index, t."row", t.col',
+)
+
+COMPOSED_EXAMPLES: list[tuple[str, str, str]] = [
+    PAGE_THUMBNAILS_EXAMPLE,
+    HEADER_BAND_WORDS_EXAMPLE,
+    TABLE_CELL_POSITIONS_EXAMPLE,
+]
+
+
+def example_query(entry: tuple[str, str, str]) -> dict[str, str]:
+    """Render a (description, fixture, query) triple as a ``vgi.example_queries`` entry."""
+    description, fixture, query = entry
+    return {"description": description, "sql": fixture_script(fixture, query)}
+
+
+def _example_queries_tag(entries: list[tuple[str, str, str]]) -> str:
+    """Serialize (description, fixture, query) triples into the ``vgi.example_queries`` tag."""
+    return json.dumps([example_query(e) for e in entries], separators=(",", ":"))
 
 
 _PAGES_EXECUTABLE_EXAMPLES = _executable_tag(
@@ -101,6 +151,7 @@ _WORDS_EXECUTABLE_EXAMPLES = _executable_tag(
             "words.pdf",
             "SELECT count(*) AS words_on_page_1 FROM pdf.main.words(pdf := getvariable('doc'), page := 1)",
         ),
+        HEADER_BAND_WORDS_EXAMPLE,
     ]
 )
 _TABLES_EXECUTABLE_EXAMPLES = _executable_tag(
@@ -116,6 +167,7 @@ _TABLES_EXECUTABLE_EXAMPLES = _executable_tag(
             "table.pdf",
             "SELECT count(*) AS cells FROM pdf.main.tables(pdf := getvariable('doc'), page := 1)",
         ),
+        TABLE_CELL_POSITIONS_EXAMPLE,
     ]
 )
 
@@ -337,6 +389,7 @@ _PAGES_TAGS = {
     ),
     "vgi.result_columns_schema": _PAGES_COLUMNS_SCHEMA,
     "vgi.executable_examples": _PAGES_EXECUTABLE_EXAMPLES,
+    "vgi.example_queries": _example_queries_tag([PAGE_THUMBNAILS_EXAMPLE]),
 }
 
 
@@ -481,6 +534,7 @@ _WORDS_TAGS = {
     ),
     "vgi.result_columns_schema": _WORDS_COLUMNS_SCHEMA,
     "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
+    "vgi.example_queries": _example_queries_tag([HEADER_BAND_WORDS_EXAMPLE]),
 }
 
 
@@ -633,6 +687,7 @@ _TABLES_TAGS = {
     ),
     "vgi.result_columns_schema": _TABLES_COLUMNS_SCHEMA,
     "vgi.executable_examples": _TABLES_EXECUTABLE_EXAMPLES,
+    "vgi.example_queries": _example_queries_tag([TABLE_CELL_POSITIONS_EXAMPLE]),
 }
 
 

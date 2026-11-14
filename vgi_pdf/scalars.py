@@ -43,7 +43,7 @@ from vgi.metadata import FunctionExample
 from vgi.scalar_function import ScalarFunction
 
 from . import core
-from .core import PdfSource, fixture_blob
+from .core import FIXTURES_URL, PdfSource, fixture_blob
 from .meta import object_tags
 
 # ---------------------------------------------------------------------------
@@ -72,6 +72,20 @@ def _examples_tag(entries: list[tuple[str, str]]) -> str:
     return json.dumps([{"description": d, "sql": s} for d, s in entries], separators=(",", ":"))
 
 
+# Composed example: the per-row scalars combined over a batch of documents read
+# with ``read_blob`` -- a one-pass triage of a folder of PDFs. Defined once and
+# referenced from page_count's (bytes overload) examples and the schema-level list.
+PDF_INVENTORY_EXAMPLE = (
+    "Triage a batch of PDFs in one pass: page count, encryption flag, metadata Author, and number of "
+    "AcroForm fields per file (a non-PDF file comes back all NULL)",
+    "SELECT parse_filename(filename) AS file, pdf.main.page_count(content) AS pages, "
+    "pdf.main.is_encrypted(content) AS encrypted, pdf.main.pdf_metadata(content)['Author'] AS author, "
+    "cardinality(pdf.main.form_fields(content)) AS form_field_count "
+    "FROM read_blob(["
+    + ", ".join(f"'{FIXTURES_URL}/{name}'" for name in ("multipage.pdf", "meta.pdf", "form.pdf", "garbage.pdf"))
+    + "]) ORDER BY file",
+)
+
 # Described-example tags, aggregated per function name across its overloads. The
 # ``sql`` here is byte-identical to the matching ``Meta.examples`` entries below.
 _PAGE_COUNT_EXAMPLES = _examples_tag(
@@ -84,6 +98,7 @@ _PAGE_COUNT_EXAMPLES = _examples_tag(
             "Page count of a PDF held as bytes (NULL for non-PDF bytes)",
             "SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages",
         ),
+        PDF_INVENTORY_EXAMPLE,
     ]
 )
 _IS_ENCRYPTED_EXAMPLES = _examples_tag(
@@ -400,6 +415,7 @@ class PageCountBytesFunction(ScalarFunction):
                 sql="SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages",
                 description="Page count of a PDF held as bytes (NULL for non-PDF bytes)",
             ),
+            FunctionExample(description=PDF_INVENTORY_EXAMPLE[0], sql=PDF_INVENTORY_EXAMPLE[1]),
         ]
 
     @classmethod

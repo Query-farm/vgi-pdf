@@ -50,7 +50,14 @@ statement error
 SELECT * FROM pdf.tables(pdf := 'test/sql/data/garbage.pdf');
 ----
 
-# Crucially: the worker is still alive and serving after the error above.
+# A NULL pdf is rejected with a clean argument error (not "no rows"), as the
+# README's NULL semantics section documents.
+statement error
+SELECT count(*) FROM pdf.pages(pdf := NULL);
+----
+cannot be NULL
+
+# Crucially: the worker is still alive and serving after the errors above.
 query I
 SELECT pdf.page_count('test/sql/data/multipage.pdf');
 ----

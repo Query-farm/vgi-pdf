@@ -32,6 +32,14 @@ tasks:
   - name: render_produces_png
     reference_sql: "SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) > 0"
     ignore_column_names: true
+  - name: words_in_top_quarter
+    reference_sql:
+      - "SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'))"
+      - "SELECT count(*) FROM pdf.main.words(pdf := getvariable('doc')) AS w JOIN pdf.main.pages(pdf := getvariable('doc')) AS p ON p.page = w.page WHERE w.top < 0.25 * p.height"
+    ignore_column_names: true
+  - name: pages_by_author
+    reference_sql: "SELECT sum(pdf.main.page_count(content)) FROM read_blob(['https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf']) WHERE pdf.main.pdf_metadata(content)['Author'] = 'Ada Lovelace'"
+    ignore_column_names: true
   - name: count_worker_objects
     reference_sql: "SELECT count(*) FROM pdf.main.functions"
     ignore_column_names: true

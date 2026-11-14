@@ -51,6 +51,7 @@ __all__ = [
     "PdfError",
     "PdfSource",
     "fixture_blob",
+    "fixture_script",
     "fixture_set",
     "form_fields",
     "is_encrypted",
@@ -91,6 +92,15 @@ def fixture_set(name: str) -> str:
     argument), so their examples load the bytes first and pass ``getvariable('doc')``.
     """
     return f"SET VARIABLE doc = {fixture_blob(name)}"
+
+
+def fixture_script(name: str, query: str) -> str:
+    """Two-statement example script: load fixture ``name`` into ``doc``, then run ``query``.
+
+    The single-string form that ``vgi.example_queries`` carries for table-function
+    examples (the statements run in order on one connection).
+    """
+    return f"{fixture_set(name)};\n{query}"
 
 
 class PdfError(Exception):

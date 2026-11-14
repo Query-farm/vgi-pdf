@@ -123,9 +123,30 @@ convention). `tables` is **long format** — one row per cell — so it drops
 straight into SQL; `row` is a SQL keyword, so quote it (`"row"`) when you select
 it.
 
+The functions compose: the scalars answer per-row questions over a whole batch of
+documents, and the table functions join to each other and feed the scalars:
+
+```sql
+-- Triage a folder of PDFs: pages, encryption, Author, and AcroForm field count.
+SELECT parse_filename(filename) AS file,
+       pdf.page_count(content) AS pages,
+       pdf.is_encrypted(content) AS encrypted,
+       pdf.pdf_metadata(content)['Author'] AS author,
+       cardinality(pdf.form_fields(content)) AS form_field_count
+FROM read_blob('*.pdf')
+ORDER BY file;
+
+-- A 36 DPI thumbnail of every page, next to that page's size.
+SELECT p.page, p.width, p.height,
+       pdf.render_page('report.pdf', p.page, 36) AS thumbnail_png
+FROM pdf.pages(pdf := 'report.pdf') AS p
+ORDER BY p.page;
+```
+
 ## NULL & hostile-input semantics
 
-A NULL `pdf` input yields NULL output (scalars) or no rows (table functions).
+A NULL `pdf` input yields NULL output (scalars); a table function rejects a NULL
+`pdf :=` with a clean argument error (`Argument 'pdf' cannot be NULL`).
 **PDFs are hostile input**, so the worker is built to survive anything:
 
 * A **malformed / truncated / non-PDF** input → scalars return NULL; table
