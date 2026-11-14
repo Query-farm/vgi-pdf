@@ -232,3 +232,7 @@ Written by [Query.Farm](https://query.farm).
 
 Copyright 2026 Query Farm LLC - https://query.farm
 
+
+## SQL notebook
+
+See the [executed PDF walkthrough](notebooks/README.md) for table extraction, page geometry and invoice arithmetic, with a reproducible notebook environment.
