@@ -193,4 +193,6 @@ agent-test graders read those same fixtures over HTTPS from a pinned tag
 with no checkout. Scalars take the bytes inline; table functions take `pdf :=` as a
 constant (no subquery allowed), so their examples are two-statement
 `SET VARIABLE doc = ...` + `pdf := getvariable('doc')` lists in
-`vgi.executable_examples` only. Keep the URL on a tag, never `main`.
+`vgi.executable_examples`; the composed examples (`tables.COMPOSED_EXAMPLES`,
+`scalars.PDF_INVENTORY_EXAMPLE`) also ride in `vgi.example_queries` as one
+`;\n`-joined script string. Keep the URL on a tag, never `main`.

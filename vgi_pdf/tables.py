@@ -84,7 +84,8 @@ def _executable_tag(entries: list[tuple[str, str, str]]) -> str:
 # ---------------------------------------------------------------------------
 
 PAGE_THUMBNAILS_EXAMPLE = (
-    "Render a 36-DPI PNG thumbnail of every page that pages() lists, next to the page's width and height",
+    "Render a 36-DPI PNG thumbnail of every page that pages() lists and report its size in bytes, "
+    "next to the page's width and height",
     "multipage.pdf",
     "SELECT p.page, p.width, p.height, "
     "octet_length(pdf.main.render_page(getvariable('doc'), p.page, 36)) AS thumbnail_png_bytes "
