@@ -46,6 +46,7 @@ from pdfplumber.pdf import PDF as PdfPlumberDocument
 __all__ = [
     "DEFAULT_DPI",
     "FIXTURES_URL",
+    "LOCAL_FIXTURES_DIR",
     "MAX_RENDER_DPI",
     "MAX_RENDER_PIXELS",
     "PdfError",
@@ -79,6 +80,11 @@ MAX_RENDER_PIXELS = 25_000_000
 # never fetches URLs.
 FIXTURES_URL = "https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data"
 
+# The same fixtures by path, relative to the repo root (the worker's working
+# directory under CI, ``make`` and vgi-lint). Used only where an example must be
+# one statement AND reach a table function, whose ``pdf :=`` must be a constant.
+LOCAL_FIXTURES_DIR = "test/sql/data"
+
 
 def fixture_blob(name: str) -> str:
     """SQL scalar subquery yielding a committed fixture's bytes (``read_blob`` over HTTPS)."""
@@ -97,8 +103,9 @@ def fixture_set(name: str) -> str:
 def fixture_script(name: str, query: str) -> str:
     """Two-statement example script: load fixture ``name`` into ``doc``, then run ``query``.
 
-    The single-string form that ``vgi.example_queries`` carries for table-function
-    examples (the statements run in order on one connection).
+    The single-string form the schema-level ``vgi.example_queries`` list shows for
+    table-function examples (run the statements in order on one connection).
+    Object-level entries cannot use it: vgi-lint EXPLAINs only the first statement.
     """
     return f"{fixture_set(name)};\n{query}"
 

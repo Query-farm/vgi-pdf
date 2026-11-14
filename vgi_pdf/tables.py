@@ -51,7 +51,7 @@ from vgi_rpc import ArrowSerializableDataclass
 from vgi_rpc.rpc import OutputCollector
 
 from . import core
-from .core import PdfSource, fixture_script, fixture_set
+from .core import LOCAL_FIXTURES_DIR, PdfSource, fixture_script, fixture_set
 from .meta import object_tags
 from .schema_utils import field
 
@@ -78,9 +78,10 @@ def _executable_tag(entries: list[tuple[str, str, str]]) -> str:
 # Composed examples: one query combining two of this worker's objects. Each is a
 # (description, fixture, query) triple defined ONCE here and referenced from
 # every carrier -- the driving table function's ``vgi.example_queries`` (what the
-# vgi-lint agent simulator shows), the schema-level list in ``worker.py``, and,
+# vgi-lint agent simulator shows; rendered as one statement over the fixture's
+# path, see ``_local_example_query``), the schema-level list in ``worker.py``, and,
 # when deterministic, ``vgi.executable_examples``. ``pdf :=`` must be a constant,
-# so each reads the fixture into ``doc`` once and every call reuses it.
+# so the script forms read the fixture into ``doc`` once and every call reuses it.
 # ---------------------------------------------------------------------------
 
 PAGE_THUMBNAILS_EXAMPLE = (
@@ -121,9 +122,29 @@ def example_query(entry: tuple[str, str, str]) -> dict[str, str]:
     return {"description": description, "sql": fixture_script(fixture, query)}
 
 
+def _local_example_query(entry: tuple[str, str, str]) -> dict[str, str]:
+    """Render a triple as a ONE-statement entry reading the committed fixture by path.
+
+    An object's ``vgi.example_queries`` entry is a single SQL string, and vgi-lint's
+    default ``explain`` mode runs it as ``EXPLAIN <sql>``: in a two-statement
+    ``SET VARIABLE doc = ...; SELECT ...`` script only the ``SET`` is EXPLAINed
+    (never executed), so the ``SELECT`` sees ``getvariable('doc')`` = NULL and the
+    table function rejects it. A table function's ``pdf :=`` cannot be a subquery
+    or a lateral column either, so the only single-statement form is a constant
+    path. These entries name the committed fixture relative to the worker's
+    working directory (the repo root, where CI and ``make`` launch it).
+    """
+    description, fixture, query = entry
+    path = f"'{LOCAL_FIXTURES_DIR}/{fixture}'"
+    return {
+        "description": f"{description}; reads the repo's committed {fixture} fixture by path",
+        "sql": query.replace("getvariable('doc')", path),
+    }
+
+
 def _example_queries_tag(entries: list[tuple[str, str, str]]) -> str:
-    """Serialize (description, fixture, query) triples into the ``vgi.example_queries`` tag."""
-    return json.dumps([example_query(e) for e in entries], separators=(",", ":"))
+    """Serialize triples into an object's ``vgi.example_queries`` tag (single statements)."""
+    return json.dumps([_local_example_query(e) for e in entries], separators=(",", ":"))
 
 
 _PAGES_EXECUTABLE_EXAMPLES = _executable_tag(
