@@ -1,0 +1,32 @@
+{
+  "repository": "Query-farm/vgi-pdf",
+  "tag": "v0.4.0",
+  "release_revision": "d27c04f46630f4a7202141a8fa6a99734c18e5e2",
+  "provenance": "Synthetic repository test PDFs and one intentionally encrypted derivative. Metadata Author/Title values are fixture claims, not verified authorship. Metadata dates are fixture data, not acquisition times. No real customer documents.",
+  "files": [
+    {
+      "file": "form.pdf",
+      "bytes": 741,
+      "sha256": "4355becce82b52c538c45057b3df60a840cf88a3f7fb4a3a3152163e73ad0f5e",
+      "origin": "Unchanged v0.4.0/test/sql/data/form.pdf"
+    },
+    {
+      "file": "meta.pdf",
+      "bytes": 1382,
+      "sha256": "dcd7a6ce34322a1130c6f98940d3c260c56c11bbaa86dde72e3b38656987dd33",
+      "origin": "Unchanged v0.4.0/test/sql/data/meta.pdf"
+    },
+    {
+      "file": "garbage.pdf",
+      "bytes": 45,
+      "sha256": "501a0cdb77cdcfccf514ac37e235e037b397763c45a2a322cc9fc72503a27c57",
+      "origin": "Unchanged v0.4.0/test/sql/data/garbage.pdf"
+    },
+    {
+      "file": "encrypted.pdf",
+      "bytes": 2440,
+      "sha256": "eafce3c5315b118d66477c2fad7675114ea3be940f7e83c2e831f9d1434ddc33",
+      "origin": "Authored encrypted derivative of released meta.pdf; public demonstration password, not sensitive data; generator generate_intake_fixture.py; encryption random material means regeneration need not preserve bytes."
+    }
+  ]
+}
