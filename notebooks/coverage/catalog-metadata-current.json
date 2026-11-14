@@ -1,0 +1,46 @@
+{
+  "query": "SELECT * FROM duckdb_databases() WHERE database_name='pdf'",
+  "captured_at": "2026-11-14T23:20:04.379313+00:00",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "path",
+    "comment",
+    "tags",
+    "internal",
+    "type",
+    "readonly",
+    "encrypted",
+    "cipher",
+    "options"
+  ],
+  "rows": [
+    [
+      "pdf",
+      22592,
+      null,
+      "Extract PDF structure (tables, word boxes, geometry, forms, metadata) and render pages to PNG.",
+      {
+        "vgi.agent_test_tasks": "[{\"name\":\"count_pages\",\"prompt\":\"How many pages does the PDF document at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf' have?\"},{\"name\":\"document_title\",\"prompt\":\"Read the document Title recorded in the metadata of the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf'.\"},{\"name\":\"is_encrypted\",\"prompt\":\"Is the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf' encrypted?\"},{\"name\":\"form_field_value\",\"prompt\":\"The fillable PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf' has an AcroForm field named 'full_name'. What value is stored in it?\"},{\"name\":\"table_cell_count\",\"prompt\":\"How many table cells are detected in the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'?\"},{\"name\":\"words_on_page\",\"prompt\":\"How many words are on page 1 of the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/words.pdf'?\"},{\"name\":\"widest_page_width\",\"prompt\":\"For the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', report the width in PDF points of its widest page.\"},{\"name\":\"render_produces_png\",\"prompt\":\"Render page 1 of the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf' to a PNG image. Does the call return a non-empty image (more than zero bytes)? Answer true or false.\"},{\"name\":\"words_in_top_quarter\",\"prompt\":\"In the PDF at 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf', how many words sit in the top quarter of their page, i.e. the word's top edge is less than 25% of that page's height? Answer with a single number.\"},{\"name\":\"pages_by_author\",\"prompt\":\"Consider these four PDFs: 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf', and 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf'. What is the total number of pages across the documents whose metadata Author is 'Ada Lovelace'? Answer with a single number.\"},{\"name\":\"count_worker_objects\",\"prompt\":\"This worker publishes a discovery registry of the objects it exposes. How many objects does that registry list?\"}]",
+        "vgi.author": "Query.Farm",
+        "vgi.copyright": "Copyright 2026 Query Farm LLC - https://query.farm",
+        "vgi.doc_llm": "Extract structure and layout from PDF documents in SQL: count pages, detect encryption, read document metadata (Title/Author/Producer/...) and AcroForm field values, render a page to a PNG image, and -- as table functions -- pull per-word bounding boxes, long-format table cells, and per-page geometry (width/height/rotation). Accepts a PDF as a `VARCHAR` filesystem path or a `BLOB` of raw bytes. This is layout/coordinates/tables/rendering, NOT plain-text extraction (use vgi-tika for text). Use it to mine tables out of reports, locate words by coordinate, inspect form submissions, or thumbnail PDFs.",
+        "vgi.doc_md": "# PDF Structure & Rendering for DuckDB\n\nQuery the **structure, layout, and coordinates of PDF documents directly in SQL** -- pull tabular data, per-word geometry, page dimensions, form submissions, and document properties, check whether a file is encrypted, and rasterize any page to an image, all streamed to DuckDB over Apache Arrow. Where a plain-text extractor flattens a document to a string, this worker preserves *where* every word, cell, and box sits on the page.\n\n## Who it is for\n\nBuilt for data engineers, analysts, and document-mining pipelines that need to pull structured data out of reports, invoices, statements, and scanned forms without leaving SQL. Reach for it whenever the *position* of content matters -- reconstructing tabular layouts, locating text by coordinate, auditing filled-in forms, or generating page thumbnails -- and reach for a plain-text extraction worker instead when you only need the raw prose.\n\n## Key concepts\n\n- **Path or bytes.** Inputs are accepted as either a `VARCHAR` filesystem path the worker opens, or a `BLOB` of raw bytes travelling over Arrow -- so a document already living in a DuckDB column works as directly as a file on disk.\n- **PDF points.** All geometry is reported in PDF points (1 pt = 1/72 inch) with the origin at the top-left corner of the page.\n- **Long-format output.** Set-returning functions expand one document into many tidy rows, ready to pivot, filter, and join with ordinary SQL.\n\n## Backed by permissive libraries only\n\nTable detection and word geometry come from [pdfplumber](https://github.com/jsvine/pdfplumber) ([docs](https://github.com/jsvine/pdfplumber#readme)); high-fidelity page rasterization is powered by [pypdfium2](https://github.com/pypdfium2-team/pypdfium2) ([docs](https://pypdfium2.readthedocs.io/)), Google's Chromium PDFium engine; document properties, encryption detection, and AcroForm reading use [pikepdf](https://github.com/pikepdf/pikepdf) ([docs](https://pikepdf.readthedocs.io/)); and rendered bitmaps are encoded to PNG with [Pillow](https://github.com/python-pillow/Pillow) ([docs](https://pillow.readthedocs.io/)). Deliberately **never PyMuPDF** -- only permissively licensed dependencies.",
+        "vgi.keywords": "[\"pdf\",\"document\",\"structure\",\"layout\",\"tables\",\"words\",\"bounding box\",\"page count\",\"render\",\"png\",\"metadata\",\"form fields\",\"acroform\",\"encryption\",\"coordinates\",\"geometry\"]",
+        "vgi.license": "MIT",
+        "vgi.subtitle": "Pull tables, words with their positions, page geometry, form fields and metadata out of PDFs, and render pages to PNG.",
+        "vgi.support_contact": "https://github.com/Query-farm/vgi-pdf/issues",
+        "vgi.support_policy_url": "https://github.com/Query-farm/vgi-pdf/blob/main/README.md",
+        "vgi.title": "PDF Structure & Rendering"
+      },
+      false,
+      "vgi",
+      false,
+      false,
+      null,
+      {
+        "location": "uvx --python 3.13 --from git+https://github.com/Query-farm/vgi-pdf@35f44ffdbb99e284b0561ebeef7a93b5966f5214 vgi-pdf-worker"
+      }
+    ]
+  ]
+}

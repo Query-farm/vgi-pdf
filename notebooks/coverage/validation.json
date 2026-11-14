@@ -1,0 +1,671 @@
+{
+  "schema_version": 1,
+  "status": "met",
+  "meets_target": true,
+  "catalogs": {
+    "released": {
+      "catalog_status": "verified",
+      "revision": "v0.4.0",
+      "catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+      "collection_reconciled": true,
+      "denominator": 9,
+      "observed_objects": 9,
+      "required": 9,
+      "verified_count": 9,
+      "candidate_count": 0,
+      "fraction": 1.0,
+      "meets_target": true,
+      "exact_runtime_count": 9,
+      "runtime_revisions": [
+        "v0.4.0"
+      ],
+      "covered": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "form_fields"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "functions"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "is_encrypted"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "page_count"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pages"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pdf_metadata"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "render_page"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "tables"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "words"
+        }
+      ],
+      "uncovered": [],
+      "objects": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "form_fields",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "form_fields(pdf BLOB) -> MAP(VARCHAR, VARCHAR)",
+            "form_fields(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "functions",
+          "kinds": [
+            "table"
+          ],
+          "signatures": [
+            "VIEW(name VARCHAR, kind VARCHAR, category VARCHAR, summary VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "is_encrypted",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "is_encrypted(pdf BLOB) -> BOOLEAN",
+            "is_encrypted(pdf VARCHAR) -> BOOLEAN"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "page_count",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "page_count(pdf BLOB) -> INTEGER",
+            "page_count(pdf VARCHAR) -> INTEGER"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pages",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "pages(pdf ANY) -> TABLE(page INTEGER, width DOUBLE, height DOUBLE, rotation INTEGER)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pdf_metadata",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "pdf_metadata(pdf BLOB) -> MAP(VARCHAR, VARCHAR)",
+            "pdf_metadata(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "render_page",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "render_page(pdf BLOB, page INTEGER) -> BLOB",
+            "render_page(pdf BLOB, page INTEGER, dpi INTEGER) -> BLOB",
+            "render_page(pdf VARCHAR, page INTEGER) -> BLOB",
+            "render_page(pdf VARCHAR, page INTEGER, dpi INTEGER) -> BLOB"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "tables",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "tables(pdf ANY, page INTEGER) -> TABLE(page INTEGER, table_index INTEGER, row INTEGER, col INTEGER, value VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "words",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "words(pdf ANY, page INTEGER) -> TABLE(page INTEGER, text VARCHAR, x0 DOUBLE, top DOUBLE, x1 DOUBLE, bottom DOUBLE)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        }
+      ],
+      "issues": []
+    },
+    "current": {
+      "catalog_status": "verified",
+      "revision": "35f44ffdbb99e284b0561ebeef7a93b5966f5214",
+      "catalog_sha256": "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3",
+      "collection_reconciled": true,
+      "denominator": 9,
+      "observed_objects": 9,
+      "required": 9,
+      "verified_count": 9,
+      "candidate_count": 0,
+      "fraction": 1.0,
+      "meets_target": true,
+      "exact_runtime_count": 0,
+      "runtime_revisions": [
+        "v0.4.0"
+      ],
+      "covered": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "form_fields"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "functions"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "is_encrypted"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "page_count"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pages"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pdf_metadata"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "render_page"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "tables"
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "words"
+        }
+      ],
+      "uncovered": [],
+      "objects": [
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "form_fields",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "form_fields(pdf BLOB) -> MAP(VARCHAR, VARCHAR)",
+            "form_fields(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "functions",
+          "kinds": [
+            "table"
+          ],
+          "signatures": [
+            "VIEW(name VARCHAR, kind VARCHAR, category VARCHAR, summary VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "is_encrypted",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "is_encrypted(pdf BLOB) -> BOOLEAN",
+            "is_encrypted(pdf VARCHAR) -> BOOLEAN"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "page_count",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "page_count(pdf BLOB) -> INTEGER",
+            "page_count(pdf VARCHAR) -> INTEGER"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pages",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "pages(pdf ANY) -> TABLE(page INTEGER, width DOUBLE, height DOUBLE, rotation INTEGER)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "pdf_metadata",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "pdf_metadata(pdf BLOB) -> MAP(VARCHAR, VARCHAR)",
+            "pdf_metadata(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "render_page",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "render_page(pdf BLOB, page INTEGER) -> BLOB",
+            "render_page(pdf BLOB, page INTEGER, dpi INTEGER) -> BLOB",
+            "render_page(pdf VARCHAR, page INTEGER) -> BLOB",
+            "render_page(pdf VARCHAR, page INTEGER, dpi INTEGER) -> BLOB"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "tables",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "tables(pdf ANY, page INTEGER) -> TABLE(page INTEGER, table_index INTEGER, row INTEGER, col INTEGER, value VARCHAR)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        },
+        {
+          "schema": [
+            "main"
+          ],
+          "name": "words",
+          "kinds": [
+            "function"
+          ],
+          "signatures": [
+            "words(pdf ANY, page INTEGER) -> TABLE(page INTEGER, text VARCHAR, x0 DOUBLE, top DOUBLE, x1 DOUBLE, bottom DOUBLE)"
+          ],
+          "access": [
+            "read"
+          ],
+          "authentication": [
+            "none"
+          ]
+        }
+      ],
+      "issues": []
+    }
+  },
+  "interface_drift": {
+    "known": true,
+    "current_only": [],
+    "released_only": [],
+    "changed": []
+  },
+  "notebooks": {
+    "01_extraction_and_invoice_arithmetic.ipynb": {
+      "verified": true,
+      "issues": []
+    },
+    "02_empty_fields_and_unavailable_documents.ipynb": {
+      "verified": true,
+      "issues": []
+    }
+  },
+  "examples": [
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "page_count"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "pages"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "tables"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "words"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "render_page"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "functions"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "is_encrypted"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "pdf_metadata"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    },
+    {
+      "status": "verified",
+      "issues": [],
+      "verified_catalogs": [
+        "released",
+        "current"
+      ],
+      "object": {
+        "schema": [
+          "main"
+        ],
+        "name": "form_fields"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "runtime_revision": "v0.4.0",
+      "runtime_catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f"
+    }
+  ],
+  "issues": []
+}

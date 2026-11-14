@@ -1,0 +1,47 @@
+{
+  "query": "SELECT * FROM duckdb_views() WHERE database_name='pdf'",
+  "captured_at": "2026-11-14T23:20:04.378370+00:00",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "schema_oid",
+    "view_name",
+    "view_oid",
+    "comment",
+    "tags",
+    "internal",
+    "temporary",
+    "column_count",
+    "sql",
+    "is_bound"
+  ],
+  "rows": [
+    [
+      "pdf",
+      22592,
+      "main",
+      22593,
+      "functions",
+      22734,
+      "Registry of every object this worker exposes (name, kind, category, summary).",
+      {
+        "category": "discovery",
+        "domain": "documents",
+        "topic": "pdf-structure-extraction",
+        "vgi.category": "Discovery",
+        "vgi.doc_llm": "# functions\n\nA **browsable discovery view** listing every object this worker exposes, one row per object: `name`, `kind` (`scalar`, `table function`, or `view`), `category` (Structure/Content/Metadata/Rendering/Discovery), and a one-line `summary`. It is a plain view -- read it as `pdf.main.functions` with no arguments.\n\nUse it as the entry point when you do not yet know what the worker offers: read this view first to pick the right object, then call that object with a PDF path or bytes. Filter by `category` to narrow to a capability area, or by `kind` to separate per-row scalars from set-returning table functions.",
+        "vgi.doc_md": "# List Worker Objects\n\nA static registry view of every object this worker exposes -- the browsable entry point for discovering the surface before calling anything.\n\n## Example\n\nReading `pdf.main.functions` returns one row per object with its `name`, `kind`, `category`, and `summary`; keep rows whose `category` equals `Content` to see the table-cell, word-box, and form-field extractors. Ready-to-run SQL lives in the example queries.\n\n## Columns\n\n| column | type | description |\n|---|---|---|\n| `name` | VARCHAR | Object name (call it as `pdf.main.<name>`). |\n| `kind` | VARCHAR | `scalar`, `table function`, or `view`. |\n| `category` | VARCHAR | Structure, Content, Metadata, Rendering, or Discovery. |\n| `summary` | VARCHAR | One-line description of what the object returns. |\n\n## Notes\n\nThe view is static and offline -- it needs no PDF, file, or network access, so it always answers instantly.",
+        "vgi.example_queries": "[{\"description\": \"Browse every object the worker exposes, grouped by category\", \"sql\": \"SELECT name, kind, category FROM pdf.main.functions ORDER BY category, name\"}, {\"description\": \"List just the content-extraction objects\", \"sql\": \"SELECT name, summary FROM pdf.main.functions WHERE category = 'Content' ORDER BY name\"}, {\"description\": \"Count how many objects the worker exposes\", \"sql\": \"SELECT count(*) AS object_count FROM pdf.main.functions\"}]",
+        "vgi.keywords": "[\"functions\",\"discovery\",\"registry\",\"capabilities\",\"catalog\",\"list functions\",\"browse\",\"help\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"name\", \"type\": \"VARCHAR\", \"description\": \"Object name (call it as pdf.main.<name>).\"}, {\"name\": \"kind\", \"type\": \"VARCHAR\", \"description\": \"'scalar', 'table function', or 'view'.\"}, {\"name\": \"category\", \"type\": \"VARCHAR\", \"description\": \"Category grouping: Structure, Content, Metadata, Rendering, or Discovery.\"}, {\"name\": \"summary\", \"type\": \"VARCHAR\", \"description\": \"One-line description of what the object returns.\"}]",
+        "vgi.title": "List Worker Objects"
+      },
+      false,
+      false,
+      null,
+      "CREATE VIEW \"functions\" AS SELECT \"name\", kind, category, summary FROM (SELECT * FROM (VALUES ('page_count', 'scalar', 'Structure', 'Number of pages in a PDF.'), ('pages', 'table function', 'Structure', 'One row per page with width, height, and rotation.'), ('words', 'table function', 'Content', 'One row per word with its bounding box.'), ('tables', 'table function', 'Content', 'Detected table cells in long (one-row-per-cell) format.'), ('form_fields', 'scalar', 'Content', 'AcroForm field name to value, as a MAP.'), ('pdf_metadata', 'scalar', 'Metadata', 'Document information dictionary (Title/Author/...), as a MAP.'), ('is_encrypted', 'scalar', 'Metadata', 'Whether a PDF is encrypted.'), ('render_page', 'scalar', 'Rendering', 'Render one page to a PNG image (BLOB).'), ('functions', 'view', 'Discovery', 'This registry: a browsable view of every object the worker exposes.')) AS valueslist) AS t(\"name\", kind, category, summary);",
+      false
+    ]
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "query": "SELECT pdf.main.page_count('fixtures/invoice_variants.pdf') AS page_count",
+  "captured_at": "2026-11-14T23:19:59.211950+00:00",
+  "columns": [
+    "page_count"
+  ],
+  "rows": [
+    [
+      2
+    ]
+  ]
+}

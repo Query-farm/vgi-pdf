@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "catalogs": {
+    "released": {
+      "path": "coverage/catalog-released.json",
+      "sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "catalog_sha256": "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+        "notes": "Complete actual15functionoverloads across8names plus functions discoveryview. Raw functions/tables/views/fullarguments/output and VIEWcolumnsignatures retained. NoCOPY/auth/writeobjects. Release/current interfaces match; source changes only metadataexamples and fixture-SQL helpers for thoseexamples. Notebook runtime is releasedv0.4.0; current notebook runs are not claimed."
+      }
+    },
+    "current": {
+      "path": "coverage/catalog-current.json",
+      "sha256": "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3",
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "catalog_sha256": "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3",
+        "notes": "Complete actual15functionoverloads across8names plus functions discoveryview. Raw functions/tables/views/fullarguments/output and VIEWcolumnsignatures retained. NoCOPY/auth/writeobjects. Release/current interfaces match; source changes only metadataexamples and fixture-SQL helpers for thoseexamples. Notebook runtime is releasedv0.4.0; current notebook runs are not claimed."
+      }
+    }
+  },
+  "notebooks": [
+    {
+      "path": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+      "execution": {
+        "path": "coverage/run-01.json",
+        "sha256": "915303f7631403b557b85d5ace8f1de83d7a6d5cf32d68e4c1b603dfe5bec182"
+      }
+    },
+    {
+      "path": "02_empty_fields_and_unavailable_documents.ipynb",
+      "sha256": "b0ca63c564fc269ae6ed62405e5c7c4e80dd34bbc8f8680672438303a68191b7",
+      "execution": {
+        "path": "coverage/run-02.json",
+        "sha256": "f81752ef585ad417e848253d93c3bde63f77a8685bcdd1e3ce910ef6c3a748b4"
+      }
+    }
+  ],
+  "examples": [
+    {
+      "object": {
+        "schema": "main",
+        "name": "page_count"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sql": [
+        {
+          "cell": "connection",
+          "reference": "pdf.main.page_count"
+        }
+      ],
+      "narrative_cells": [
+        "parameter-story",
+        "extract-story",
+        "checks-story"
+      ],
+      "result_cells": [
+        "geometry-finding",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "parameter-story",
+        "checks-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Reconcile scalar page population with structural page records before selecting one variant.",
+        "finding": "Actual pagecount2 agrees with two geometry rows; selected page1\u21922 remains within documented population and both fullwidthrenderdimensions validated."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "pages"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sql": [
+        {
+          "cell": "connection",
+          "reference": "pdf.main.pages"
+        }
+      ],
+      "narrative_cells": [
+        "extract-story",
+        "layout-story",
+        "checks-story"
+      ],
+      "result_cells": [
+        "geometry-finding",
+        "layout-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "layout-story",
+        "checks-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Give the raster and word boxes a common physical page coordinate system.",
+        "finding": "Actual612\u00d7792point dimensions determine144DPI raster1224\u00d71584 dimensions and page-coordinate image extent. Wordboxes and documentcrop use returnedgeometry, not inferred imagepixels."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "tables"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sql": [
+        {
+          "cell": "connection",
+          "reference": "pdf.main.tables"
+        }
+      ],
+      "narrative_cells": [
+        "parse-story",
+        "amount-story",
+        "experiment-story"
+      ],
+      "result_cells": [
+        "lines-finding",
+        "amount-chart",
+        "totals-finding",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "totals-finding",
+        "parse-story",
+        "experiment-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Recover known header-mapped cells into exact decimal invoice amounts and detect stale arithmetic.",
+        "finding": "Knownfourcolumnfixture yields five typedlines. Page2 TAPEquantity10\u219212 changescomputedtotal315\u2192340 whileprintedlines/total315remain. Correct extraction is separate from arithmeticagreement; no generalinvoiceparserclaim."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "words"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sql": [
+        {
+          "cell": "connection",
+          "reference": "pdf.main.words"
+        }
+      ],
+      "narrative_cells": [
+        "layout-story",
+        "checks-story"
+      ],
+      "result_cells": [
+        "layout-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "layout-story",
+        "checks-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Locate extracted item identities on the actual rendered document.",
+        "finding": "EachSKU hasexactlyone matching wordbox perpage;boxesremaininsidepageandmarktheSKUonly. Variant2 highlightsTAPE discrepancy without treating textposition as rowrecognition or OCR."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "render_page"
+      },
+      "notebook": "01_extraction_and_invoice_arithmetic.ipynb",
+      "sql": [
+        {
+          "cell": "connection",
+          "reference": "pdf.main.render_page"
+        }
+      ],
+      "narrative_cells": [
+        "extract-story",
+        "layout-story"
+      ],
+      "result_cells": [
+        "layout-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "layout-story",
+        "checks-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "486f7fa1b61c7aac577fc9a82f915da8d449d7b90e49354892f66f62bee2bab6",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Check extracted keys against visible document content using a real worker render.",
+        "finding": "ActualPNGscalar materializedonce;dimensionsmatch144DPI. Figure embeds worker-rendered raster withvectoraxes/SQLwordboxes; no separatePDFparser or vectorpage reconstruction."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "functions"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "sql": [
+        {
+          "cell": "registry-query",
+          "reference": "pdf.main.functions"
+        }
+      ],
+      "narrative_cells": [
+        "registry-story",
+        "inventory-story"
+      ],
+      "result_cells": [
+        "registry-finding",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "registry-finding",
+        "registry-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "b0ca63c564fc269ae6ed62405e5c7c4e80dd34bbc8f8680672438303a68191b7",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Choose per-row scalar operations for a mixed availability inventory before calling structure readers.",
+        "finding": "Plannedpagecount/encryption/metadata/forms operations joined toactualregistry andallfourverifiedscalar. This supports retainingNULL/unreadablerows; structure readers are distinguished asmanyrow/erroronunreadable operations."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "is_encrypted"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "sql": [
+        {
+          "cell": "inventory-query",
+          "reference": "pdf.main.is_encrypted"
+        }
+      ],
+      "narrative_cells": [
+        "inventory-story",
+        "checks-story"
+      ],
+      "result_cells": [
+        "inventory-finding",
+        "intake-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "inventory-finding",
+        "inventory-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "b0ca63c564fc269ae6ed62405e5c7c4e80dd34bbc8f8680672438303a68191b7",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Separate successful encryption detection from unknown encryption on malformed/missing bytes.",
+        "finding": "AuthoredprotectedPDFreturnstrue despiteNULLpagecount/maps; three readableinputsfalse; malformedandmissingNULL. No decryptionorpassworduse innotebook; statuses remain distinctbefore routing."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "pdf_metadata"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "sql": [
+        {
+          "cell": "inventory-query",
+          "reference": "pdf.main.pdf_metadata"
+        }
+      ],
+      "narrative_cells": [
+        "question",
+        "inventory-story",
+        "routing-story"
+      ],
+      "result_cells": [
+        "inventory-finding",
+        "routing-finding",
+        "intake-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "inventory-finding",
+        "routing-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "b0ca63c564fc269ae6ed62405e5c7c4e80dd34bbc8f8680672438303a68191b7",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Keep valid empty metadata separate from unavailable extraction and do not confuse Author with form values.",
+        "finding": "Filledformreturnsvalidemptymap0; metadata-onlyPDFclaimsAuthorAdaLovelacebutformmap0. UnavailablecasesretainNULLmaps. Metadataisfixtureclaim, not authenticatedauthorship or acquisitiontime."
+      }
+    },
+    {
+      "object": {
+        "schema": "main",
+        "name": "form_fields"
+      },
+      "notebook": "02_empty_fields_and_unavailable_documents.ipynb",
+      "sql": [
+        {
+          "cell": "inventory-query",
+          "reference": "pdf.main.form_fields"
+        }
+      ],
+      "narrative_cells": [
+        "parameter-story",
+        "inventory-story",
+        "routing-story",
+        "experiment-story"
+      ],
+      "result_cells": [
+        "inventory-finding",
+        "routing-finding",
+        "intake-chart",
+        "checks-finding"
+      ],
+      "interpretation_cells": [
+        "routing-finding",
+        "inventory-finding",
+        "experiment-story"
+      ],
+      "review": {
+        "status": "approved",
+        "reviewer": "Codex /root/notebooks_earthquakes",
+        "reviewed_at": "2026-11-14T23:30:06.020505+00:00",
+        "notebook_sha256": "b0ca63c564fc269ae6ed62405e5c7c4e80dd34bbc8f8680672438303a68191b7",
+        "catalog_sha256": [
+          "093551406e1e12937cecc7b33dcd9423208e276ef4209b7c27dca0144e16a20f",
+          "530292ff6a672c1e74dadfdc845166fe01bebfe0b182ef75aa789593adebb4b3"
+        ],
+        "purpose": "Apply a narrow top-level AcroForm-field rule without treating unavailable maps as empty answers.",
+        "finding": "full_name\u2192email changesready1\u21920 whileinputs/hash/scalarinventoryfixed. Validnoformmaps0distinctfromNULLunavailable; allfivecategories\u2014includingzero\u2014retained. Noidentity/emailcontent/OCRvalidation claim."
+      }
+    }
+  ]
+}

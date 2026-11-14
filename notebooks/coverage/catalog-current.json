@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "repository": "Query-farm/vgi-pdf",
+  "revision": "35f44ffdbb99e284b0561ebeef7a93b5966f5214",
+  "captured_at": "2026-11-14T23:20:04.370379+00:00",
+  "default_schema": "main",
+  "scope": "all_public_functions_and_tables",
+  "complete": true,
+  "evidence": [
+    {
+      "path": "coverage/functions-current.json",
+      "sha256": "8fd76fe42151612955104a457d54ec128409a72522535c0b49ba6175c4251cf0",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/tables-current.json",
+      "sha256": "4e89dc8868e14084530ae7fce7dbeb0427fa02712637bc1d9877940c12b8c5c4",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/views-current.json",
+      "sha256": "05af67c75299973add41658ceccf6a84bf7e4a7f5ec30314d0abe69c4262f2e4",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/arguments-current.json",
+      "sha256": "72c6806a37d37c5d24c79a601bc26ad2366b1f8ad7d9e9d611b1763144292f5f",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/catalog-metadata-current.json",
+      "sha256": "01377a3938e9c59ecad24da482b5a6f19930dfe619f7069ec97103afb6e98a71",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/copy-formats-current.json",
+      "sha256": "54870bd9c9f605194216bfe273dfb87a7c54ffa656889ab8528d96cbdf731c11",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/pages-columns-current.json",
+      "sha256": "9953dff9e2a52670dae4db5add5a051b096bcc5f7ef11366023e1940a881978a",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/words-columns-current.json",
+      "sha256": "ce4cf61ea643ce6719499c5a18d1c13be65bafd24c484d4cd546b882a636b490",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/tables-columns-current.json",
+      "sha256": "69e4f3aff053c85d7e0774787a1d843460547cc4aa24825f4c44feaf092519f4",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/functions-columns-current.json",
+      "sha256": "a51cebac835bf38334f1dfaee5327fe7cd1c34925cd636204e39a2a6c4f7c237",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/page-probe-current.json",
+      "sha256": "2f1048ec4ced6caecf47920ffedf31047931f4118be5008324faf09763800e62",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    },
+    {
+      "path": "coverage/source-compatibility.json",
+      "sha256": "57d40e6899574d3a4938c4bfea4f185a7fc60b5c4e7af5d9def57efadd8b6ba3",
+      "description": "Actual complete runtime function/table/view catalog, full arguments and output/view columns; reviewed source compatibility"
+    }
+  ],
+  "objects": [
+    {
+      "schema": "main",
+      "name": "form_fields",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "form_fields(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)",
+        "form_fields(pdf BLOB) -> MAP(VARCHAR, VARCHAR)"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "is_encrypted",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "is_encrypted(pdf VARCHAR) -> BOOLEAN",
+        "is_encrypted(pdf BLOB) -> BOOLEAN"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "page_count",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "page_count(pdf VARCHAR) -> INTEGER",
+        "page_count(pdf BLOB) -> INTEGER"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "pages",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "pages(pdf ANY) -> TABLE(page INTEGER, width DOUBLE, height DOUBLE, rotation INTEGER)"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "pdf_metadata",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "pdf_metadata(pdf VARCHAR) -> MAP(VARCHAR, VARCHAR)",
+        "pdf_metadata(pdf BLOB) -> MAP(VARCHAR, VARCHAR)"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "render_page",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "render_page(pdf VARCHAR, page INTEGER) -> BLOB",
+        "render_page(pdf VARCHAR, page INTEGER, dpi INTEGER) -> BLOB",
+        "render_page(pdf BLOB, page INTEGER) -> BLOB",
+        "render_page(pdf BLOB, page INTEGER, dpi INTEGER) -> BLOB"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "tables",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "tables(pdf ANY, page INTEGER) -> TABLE(page INTEGER, table_index INTEGER, row INTEGER, col INTEGER, value VARCHAR)"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "words",
+      "kind": "function",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "words(pdf ANY, page INTEGER) -> TABLE(page INTEGER, text VARCHAR, x0 DOUBLE, top DOUBLE, x1 DOUBLE, bottom DOUBLE)"
+      ]
+    },
+    {
+      "schema": "main",
+      "name": "functions",
+      "kind": "table",
+      "authentication": "none",
+      "access": "read",
+      "signatures": [
+        "VIEW(name VARCHAR, kind VARCHAR, category VARCHAR, summary VARCHAR)"
+      ]
+    }
+  ],
+  "launch": "uvx --python 3.13 --from git+https://github.com/Query-farm/vgi-pdf@35f44ffdbb99e284b0561ebeef7a93b5966f5214 vgi-pdf-worker",
+  "runtime": "Haybarn2.0.0rc11",
+  "review_notes": "Fifteen function overloads group into eight named functions; the functions discovery view adds one named table surface. No catalog tables, COPY formats, credential-only or write operations."
+}

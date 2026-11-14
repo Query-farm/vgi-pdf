@@ -1,0 +1,16 @@
+{
+  "release": "v0.4.0",
+  "release_commit": "d27c04f46630f4a7202141a8fa6a99734c18e5e2",
+  "current_revision": "35f44ffdbb99e284b0561ebeef7a93b5966f5214",
+  "root_dependencies_unchanged": true,
+  "source_ci": {
+    "url": "https://github.com/Query-farm/vgi-pdf/actions/runs/43577675136",
+    "revision": "35f44ffdbb99e284b0561ebeef7a93b5966f5214",
+    "conclusion": "success"
+  },
+  "runtime": "Haybarn2.0.0rc11",
+  "launch": "uvx --python 3.13 --from git+https://github.com/Query-farm/vgi-pdf@v0.4.0 vgi-pdf-worker",
+  "source_review": "Current source adds composed metadata examples, fixture-SQL helpers used only by examples, registry documentation and agent tasks. PDF parsing/rendering/streaming/scalar behavior and root dependencies unchanged. Actual full catalog and output/view signatures match release. No worker source/root lock edits by this notebook publication.",
+  "metadata_provenance": "Actual catalog-metadata.json vgi.title/vgi.subtitle.",
+  "scope": "Fifteen function overloads group into eight named functions; the functions discovery view adds one named table surface. No catalog tables, COPY formats, credential-only or write operations."
+}

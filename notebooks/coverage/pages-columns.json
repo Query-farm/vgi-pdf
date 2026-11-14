@@ -1,0 +1,46 @@
+{
+  "query": "DESCRIBE SELECT * FROM pdf.main.pages(pdf:='fixtures/invoice_variants.pdf')",
+  "captured_at": "2026-11-14T23:19:59.213268+00:00",
+  "columns": [
+    "column_name",
+    "column_type",
+    "null",
+    "key",
+    "default",
+    "extra"
+  ],
+  "rows": [
+    [
+      "page",
+      "INTEGER",
+      "YES",
+      null,
+      null,
+      null
+    ],
+    [
+      "width",
+      "DOUBLE",
+      "YES",
+      null,
+      null,
+      null
+    ],
+    [
+      "height",
+      "DOUBLE",
+      "YES",
+      null,
+      null,
+      null
+    ],
+    [
+      "rotation",
+      "INTEGER",
+      "YES",
+      null,
+      null,
+      null
+    ]
+  ]
+}

@@ -1,0 +1,631 @@
+{
+  "query": "SELECT * FROM duckdb_functions() WHERE database_name='pdf' ORDER BY schema_name,function_name",
+  "captured_at": "2026-11-14T23:20:04.370379+00:00",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "function_name",
+    "alias_of",
+    "function_type",
+    "description",
+    "comment",
+    "tags",
+    "return_type",
+    "parameters",
+    "parameter_types",
+    "varargs",
+    "macro_definition",
+    "has_side_effects",
+    "internal",
+    "extension_name",
+    "function_oid",
+    "examples",
+    "stability",
+    "categories"
+  ],
+  "rows": [
+    [
+      "pdf",
+      "22592",
+      "main",
+      "form_fields",
+      null,
+      "scalar",
+      "AcroForm field name->value map of a PDF (VARCHAR path)",
+      null,
+      {
+        "vgi.category": "Content",
+        "vgi.doc_llm": "# form_fields\n\nReturn the values of an **AcroForm** (fillable PDF form) as a `MAP(VARCHAR, VARCHAR)` mapping each field's fully-qualified name to its current value. The `pdf` argument is a `VARCHAR` path or a `BLOB`.\n\nUse it to read submitted form data -- applications, invoices, government forms -- straight into SQL, then pivot fields into columns with `['field_name']` lookups.\n\n**Edge cases:** a document with no AcroForm yields an empty map; checkbox/radio values are the export value strings; a NULL input or unreadable PDF returns NULL. Never raises.",
+        "vgi.doc_md": "# Extract PDF Form Fields\n\nReads filled-in AcroForm field values from a fillable PDF, returning a `MAP(VARCHAR, VARCHAR)` of field name to value.\n\n## Example\n\nRead one field with `pdf.main.form_fields('application.pdf')['applicant_name']`, or read the whole map to pivot every submitted field into columns. Checkbox and radio values come back as their export-value strings. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nA PDF without a form returns an empty map. Returns `NULL` for a NULL input or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Read the 'full_name' AcroForm field (returns 'Ada Lovelace')\",\"sql\":\"SELECT pdf.main.form_fields((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf')))['full_name'] AS full_name\"},{\"description\":\"Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.form_fields('not-a-pdf'::BLOB) AS fields\"}]",
+        "vgi.keywords": "[\"form\",\"form fields\",\"acroform\",\"fillable\",\"fields\",\"inputs\",\"checkbox\",\"submission\",\"values\"]",
+        "vgi.title": "Extract PDF Form Fields"
+      },
+      "MAP(VARCHAR, VARCHAR)",
+      [
+        "pdf"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22596,
+      [
+        "SELECT pdf.main.form_fields((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf')))['full_name'] AS full_name"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "forms"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "form_fields",
+      null,
+      "scalar",
+      "AcroForm field name->value map of a PDF (BLOB bytes)",
+      null,
+      {
+        "vgi.category": "Content",
+        "vgi.doc_llm": "# form_fields\n\nReturn the values of an **AcroForm** (fillable PDF form) as a `MAP(VARCHAR, VARCHAR)` mapping each field's fully-qualified name to its current value. The `pdf` argument is a `VARCHAR` path or a `BLOB`.\n\nUse it to read submitted form data -- applications, invoices, government forms -- straight into SQL, then pivot fields into columns with `['field_name']` lookups.\n\n**Edge cases:** a document with no AcroForm yields an empty map; checkbox/radio values are the export value strings; a NULL input or unreadable PDF returns NULL. Never raises.",
+        "vgi.doc_md": "# Extract PDF Form Fields\n\nReads filled-in AcroForm field values from a fillable PDF, returning a `MAP(VARCHAR, VARCHAR)` of field name to value.\n\n## Example\n\nRead one field with `pdf.main.form_fields('application.pdf')['applicant_name']`, or read the whole map to pivot every submitted field into columns. Checkbox and radio values come back as their export-value strings. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nA PDF without a form returns an empty map. Returns `NULL` for a NULL input or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Read the 'full_name' AcroForm field (returns 'Ada Lovelace')\",\"sql\":\"SELECT pdf.main.form_fields((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf')))['full_name'] AS full_name\"},{\"description\":\"Form fields of a fillable PDF held as bytes (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.form_fields('not-a-pdf'::BLOB) AS fields\"}]",
+        "vgi.keywords": "[\"form\",\"form fields\",\"acroform\",\"fillable\",\"fields\",\"inputs\",\"checkbox\",\"submission\",\"values\"]",
+        "vgi.title": "Extract PDF Form Fields"
+      },
+      "MAP(VARCHAR, VARCHAR)",
+      [
+        "pdf"
+      ],
+      [
+        "BLOB"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22596,
+      [
+        "SELECT pdf.main.form_fields('not-a-pdf'::BLOB) AS fields"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "forms"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "is_encrypted",
+      null,
+      "scalar",
+      "True if the PDF (VARCHAR path) is encrypted, NULL if unreadable",
+      null,
+      {
+        "vgi.category": "Metadata",
+        "vgi.doc_llm": "# is_encrypted\n\nReturn `TRUE` if the PDF is **encrypted** (password/permissions protected), `FALSE` if it is plain, or `NULL` if the bytes are not a readable PDF at all. The `pdf` argument is a `VARCHAR` path or a `BLOB` of bytes.\n\nUse it to triage a batch of documents before processing -- encrypted files cannot be parsed for words/tables/metadata without a password.\n\n**Key behavior:** an encrypted file that has no user password still returns `TRUE`. Encryption is a *successful* answer, not an error, so the function never attempts to brute-force a password and never hangs. NULL input yields NULL.",
+        "vgi.doc_md": "# Detect PDF Encryption\n\nReports whether a PDF is encrypted, returning a `BOOLEAN`.\n\n## Example\n\nCalling `pdf.main.is_encrypted('secret.pdf')` returns `true` for a password/permissions protected document and `false` for a plain one. Use it to triage a batch of uploads before parsing, since encrypted files cannot be read for words, tables, or metadata without a password. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\n`TRUE` means the document is password/permissions protected. `NULL` means the input was not a readable PDF. Detection is purely structural -- no password guessing is performed.",
+        "vgi.example_queries": "[{\"description\":\"Whether a sample PDF fetched with read_blob is encrypted (false)\",\"sql\":\"SELECT pdf.main.is_encrypted((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf'))) AS encrypted\"},{\"description\":\"Whether a PDF held as bytes is encrypted (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.is_encrypted('not-a-pdf'::BLOB) AS encrypted\"}]",
+        "vgi.keywords": "[\"encrypted\",\"encryption\",\"password\",\"protected\",\"security\",\"locked\",\"acroform\",\"permissions\"]",
+        "vgi.title": "Detect PDF Encryption"
+      },
+      "BOOLEAN",
+      [
+        "pdf"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22597,
+      [
+        "SELECT pdf.main.is_encrypted((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf'))) AS encrypted"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "security"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "is_encrypted",
+      null,
+      "scalar",
+      "True if the PDF (BLOB bytes) is encrypted, NULL if unreadable",
+      null,
+      {
+        "vgi.category": "Metadata",
+        "vgi.doc_llm": "# is_encrypted\n\nReturn `TRUE` if the PDF is **encrypted** (password/permissions protected), `FALSE` if it is plain, or `NULL` if the bytes are not a readable PDF at all. The `pdf` argument is a `VARCHAR` path or a `BLOB` of bytes.\n\nUse it to triage a batch of documents before processing -- encrypted files cannot be parsed for words/tables/metadata without a password.\n\n**Key behavior:** an encrypted file that has no user password still returns `TRUE`. Encryption is a *successful* answer, not an error, so the function never attempts to brute-force a password and never hangs. NULL input yields NULL.",
+        "vgi.doc_md": "# Detect PDF Encryption\n\nReports whether a PDF is encrypted, returning a `BOOLEAN`.\n\n## Example\n\nCalling `pdf.main.is_encrypted('secret.pdf')` returns `true` for a password/permissions protected document and `false` for a plain one. Use it to triage a batch of uploads before parsing, since encrypted files cannot be read for words, tables, or metadata without a password. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\n`TRUE` means the document is password/permissions protected. `NULL` means the input was not a readable PDF. Detection is purely structural -- no password guessing is performed.",
+        "vgi.example_queries": "[{\"description\":\"Whether a sample PDF fetched with read_blob is encrypted (false)\",\"sql\":\"SELECT pdf.main.is_encrypted((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf'))) AS encrypted\"},{\"description\":\"Whether a PDF held as bytes is encrypted (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.is_encrypted('not-a-pdf'::BLOB) AS encrypted\"}]",
+        "vgi.keywords": "[\"encrypted\",\"encryption\",\"password\",\"protected\",\"security\",\"locked\",\"acroform\",\"permissions\"]",
+        "vgi.title": "Detect PDF Encryption"
+      },
+      "BOOLEAN",
+      [
+        "pdf"
+      ],
+      [
+        "BLOB"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22597,
+      [
+        "SELECT pdf.main.is_encrypted('not-a-pdf'::BLOB) AS encrypted"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "security"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "page_count",
+      null,
+      "scalar",
+      "Number of pages in a PDF (VARCHAR path), or NULL if unreadable",
+      null,
+      {
+        "vgi.category": "Structure",
+        "vgi.doc_llm": "# page_count\n\nReturn the **number of pages** in a PDF as an `INTEGER`. The `pdf` argument is either a `VARCHAR` filesystem path the worker opens or a `BLOB` of the raw PDF bytes.\n\nUse it to size a document before paging through `pages`, `words`, or `tables`, to validate an upload, or to drive a `generate_series(1, page_count(...))` loop over `render_page`.\n\n**Edge cases:** a NULL input returns NULL; a malformed, encrypted-beyond-reading, or otherwise unreadable PDF also returns NULL rather than raising -- this scalar never throws and never hangs.",
+        "vgi.doc_md": "# Count PDF Pages\n\nCounts the pages in a PDF document, returning an `INTEGER`.\n\n## Example\n\nCalling `pdf.main.page_count('report.pdf')` on a twelve-page report returns `12`. The `pdf` argument is a `VARCHAR` filesystem path or a `BLOB` of raw bytes, so a document already sitting in a table column works exactly like a file on disk. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nReturns `NULL` for a NULL input or a PDF that cannot be read. Useful for sizing a document ahead of the `pages`, `words`, and `tables` table functions.",
+        "vgi.example_queries": "[{\"description\":\"Page count of a sample PDF fetched with read_blob (returns 3)\",\"sql\":\"SELECT pdf.main.page_count((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))) AS pages\"},{\"description\":\"Page count of a PDF held as bytes (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages\"},{\"description\":\"Triage a batch of PDFs in one pass: page count, encryption flag, metadata Author, and number of AcroForm fields per file (a non-PDF file comes back all NULL)\",\"sql\":\"SELECT parse_filename(filename) AS file, pdf.main.page_count(content) AS pages, pdf.main.is_encrypted(content) AS encrypted, pdf.main.pdf_metadata(content)['Author'] AS author, cardinality(pdf.main.form_fields(content)) AS form_field_count FROM read_blob(['https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/garbage.pdf']) ORDER BY file\"}]",
+        "vgi.keywords": "[\"page count\",\"number of pages\",\"pages\",\"count\",\"length\",\"size\",\"npages\",\"pdf\"]",
+        "vgi.title": "Count PDF Pages"
+      },
+      "INTEGER",
+      [
+        "pdf"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22598,
+      [
+        "SELECT pdf.main.page_count((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))) AS pages"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "structure"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "page_count",
+      null,
+      "scalar",
+      "Number of pages in a PDF (BLOB bytes), or NULL if unreadable",
+      null,
+      {
+        "vgi.category": "Structure",
+        "vgi.doc_llm": "# page_count\n\nReturn the **number of pages** in a PDF as an `INTEGER`. The `pdf` argument is either a `VARCHAR` filesystem path the worker opens or a `BLOB` of the raw PDF bytes.\n\nUse it to size a document before paging through `pages`, `words`, or `tables`, to validate an upload, or to drive a `generate_series(1, page_count(...))` loop over `render_page`.\n\n**Edge cases:** a NULL input returns NULL; a malformed, encrypted-beyond-reading, or otherwise unreadable PDF also returns NULL rather than raising -- this scalar never throws and never hangs.",
+        "vgi.doc_md": "# Count PDF Pages\n\nCounts the pages in a PDF document, returning an `INTEGER`.\n\n## Example\n\nCalling `pdf.main.page_count('report.pdf')` on a twelve-page report returns `12`. The `pdf` argument is a `VARCHAR` filesystem path or a `BLOB` of raw bytes, so a document already sitting in a table column works exactly like a file on disk. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nReturns `NULL` for a NULL input or a PDF that cannot be read. Useful for sizing a document ahead of the `pages`, `words`, and `tables` table functions.",
+        "vgi.example_queries": "[{\"description\":\"Page count of a sample PDF fetched with read_blob (returns 3)\",\"sql\":\"SELECT pdf.main.page_count((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))) AS pages\"},{\"description\":\"Page count of a PDF held as bytes (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages\"},{\"description\":\"Triage a batch of PDFs in one pass: page count, encryption flag, metadata Author, and number of AcroForm fields per file (a non-PDF file comes back all NULL)\",\"sql\":\"SELECT parse_filename(filename) AS file, pdf.main.page_count(content) AS pages, pdf.main.is_encrypted(content) AS encrypted, pdf.main.pdf_metadata(content)['Author'] AS author, cardinality(pdf.main.form_fields(content)) AS form_field_count FROM read_blob(['https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/garbage.pdf']) ORDER BY file\"}]",
+        "vgi.keywords": "[\"page count\",\"number of pages\",\"pages\",\"count\",\"length\",\"size\",\"npages\",\"pdf\"]",
+        "vgi.title": "Count PDF Pages"
+      },
+      "INTEGER",
+      [
+        "pdf"
+      ],
+      [
+        "BLOB"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22598,
+      [
+        "SELECT pdf.main.page_count('not-a-pdf'::BLOB) AS pages",
+        "SELECT parse_filename(filename) AS file, pdf.main.page_count(content) AS pages, pdf.main.is_encrypted(content) AS encrypted, pdf.main.pdf_metadata(content)['Author'] AS author, cardinality(pdf.main.form_fields(content)) AS form_field_count FROM read_blob(['https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf', 'https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/garbage.pdf']) ORDER BY file"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "structure"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "pages",
+      null,
+      "table",
+      "Per-page geometry (page, width, height, rotation) of a PDF (VARCHAR path or BLOB bytes)",
+      null,
+      {
+        "vgi.category": "Structure",
+        "vgi.doc_llm": "# pages\n\nTable function returning **one row per page** of a PDF with its physical geometry: `page` (1-based), `width` and `height` in PDF points (1 pt = 1/72 inch), and `rotation` in degrees. Call by keyword: `pages(pdf := '...')`, where `pdf` is a `VARCHAR` path or a `BLOB` of raw bytes.\n\nUse it to learn how many pages a document has and each page's size/orientation -- e.g. to detect landscape vs portrait pages, find oversized pages, or drive per-page rendering.\n\n**Edge cases:** a NULL `pdf` is rejected with a clean argument error; an unreadable/encrypted PDF surfaces a clean DuckDB error (not a crash). Output streams in bounded slices so even very large documents page safely over every transport.",
+        "vgi.doc_md": "# List PDF Page Geometry\n\nReturns the geometry of every page in a PDF, one row per page: the 1-based page number and each page's width, height, and rotation.\n\n## Example\n\nCalling `pdf.main.pages(pdf := 'report.pdf')` yields one row per page; a US-Letter portrait page reports a width of `612` and a height of `792` (points) with a rotation of `0`. Restrict to landscape pages by keeping rows where `width` exceeds `height`. Ready-to-run SQL lives in the example queries.\n\n## Columns\n\n| column | type | description |\n|---|---|---|\n| `page` | INTEGER | 1-based page number. |\n| `width` | DOUBLE | Page width in PDF points. |\n| `height` | DOUBLE | Page height in PDF points. |\n| `rotation` | INTEGER | Page rotation in degrees (0/90/180/270). |\n\n## Notes\n\nDimensions are in PDF points (1/72 inch). Call the function by keyword (`pdf := ...`). A NULL `pdf` raises an argument error; an unreadable document raises a clean error.",
+        "vgi.example_queries": "[{\"description\":\"Render a 36-DPI PNG thumbnail of every page that pages() lists and report its size in bytes, next to the page's width and height; reads the repo's committed multipage.pdf fixture by path\",\"sql\":\"SELECT p.page, p.width, p.height, octet_length(pdf.main.render_page('test/sql/data/multipage.pdf', p.page, 36)) AS thumbnail_png_bytes FROM pdf.main.pages(pdf := 'test/sql/data/multipage.pdf') AS p ORDER BY p.page\"}]",
+        "vgi.executable_examples": "[{\"description\":\"Per-page geometry of a multi-page PDF, ordered by page\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))\",\"SELECT page, width, height, rotation FROM pdf.main.pages(pdf := getvariable('doc')) ORDER BY page\"]},{\"description\":\"Count the landscape (wider-than-tall) pages\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf'))\",\"SELECT count(*) AS landscape_pages FROM pdf.main.pages(pdf := getvariable('doc')) WHERE width > height\"]}]",
+        "vgi.keywords": "[\"pages\",\"page geometry\",\"page size\",\"dimensions\",\"width\",\"height\",\"rotation\",\"orientation\",\"landscape\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"page\", \"type\": \"INTEGER\", \"description\": \"1-based page number.\"}, {\"name\": \"width\", \"type\": \"DOUBLE\", \"description\": \"Page width in PDF points (1 pt = 1/72 inch).\"}, {\"name\": \"height\", \"type\": \"DOUBLE\", \"description\": \"Page height in PDF points (1 pt = 1/72 inch).\"}, {\"name\": \"rotation\", \"type\": \"INTEGER\", \"description\": \"Page rotation in degrees (0, 90, 180, or 270).\"}]",
+        "vgi.title": "List PDF Page Geometry"
+      },
+      null,
+      [
+        "pdf"
+      ],
+      [
+        "ANY"
+      ],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22601,
+      [],
+      null,
+      [
+        "pdf",
+        "structure"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "pdf_metadata",
+      null,
+      "scalar",
+      "Document metadata (Title/Author/Producer/...) of a PDF (VARCHAR path)",
+      null,
+      {
+        "vgi.category": "Metadata",
+        "vgi.doc_llm": "# pdf_metadata\n\nReturn the PDF's **document information dictionary** as a `MAP(VARCHAR, VARCHAR)` -- keys such as `Title`, `Author`, `Subject`, `Creator`, `Producer`, `CreationDate`, and `ModDate`. The `pdf` argument is a `VARCHAR` path or a `BLOB`.\n\nIndex a single field with `pdf_metadata(...)['Title']`, or expand the whole map with `UNNEST(map_entries(...))`. Use it to catalog documents, sort by author, or extract titles.\n\n**Edge cases:** keys present depend on the producer (any subset may be missing); a NULL input or an unreadable PDF returns NULL. Never raises.",
+        "vgi.doc_md": "# Read PDF Document Metadata\n\nExtracts the document information dictionary (Title, Author, Producer, dates, ...) as a `MAP(VARCHAR, VARCHAR)`.\n\n## Example\n\nIndex a single field with `pdf.main.pdf_metadata('report.pdf')['Title']`, or expand the whole map with `map_entries(...)` to list every key/value pair. Typical keys are `Title`, `Author`, `Subject`, `Creator`, `Producer`, `CreationDate`, and `ModDate`. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nAvailable keys vary by the tool that produced the PDF. Returns `NULL` for a NULL input or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Title from a sample PDF's metadata (returns 'Quarterly Report')\",\"sql\":\"SELECT pdf.main.pdf_metadata((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf')))['Title'] AS title\"},{\"description\":\"Author from PDF bytes' metadata (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.pdf_metadata('not-a-pdf'::BLOB)['Author'] AS author\"}]",
+        "vgi.keywords": "[\"metadata\",\"document info\",\"title\",\"author\",\"producer\",\"creator\",\"subject\",\"creation date\",\"properties\"]",
+        "vgi.title": "Read PDF Document Metadata"
+      },
+      "MAP(VARCHAR, VARCHAR)",
+      [
+        "pdf"
+      ],
+      [
+        "VARCHAR"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22599,
+      [
+        "SELECT pdf.main.pdf_metadata((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf')))['Title'] AS title"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "metadata"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "pdf_metadata",
+      null,
+      "scalar",
+      "Document metadata (Title/Author/Producer/...) of a PDF (BLOB bytes)",
+      null,
+      {
+        "vgi.category": "Metadata",
+        "vgi.doc_llm": "# pdf_metadata\n\nReturn the PDF's **document information dictionary** as a `MAP(VARCHAR, VARCHAR)` -- keys such as `Title`, `Author`, `Subject`, `Creator`, `Producer`, `CreationDate`, and `ModDate`. The `pdf` argument is a `VARCHAR` path or a `BLOB`.\n\nIndex a single field with `pdf_metadata(...)['Title']`, or expand the whole map with `UNNEST(map_entries(...))`. Use it to catalog documents, sort by author, or extract titles.\n\n**Edge cases:** keys present depend on the producer (any subset may be missing); a NULL input or an unreadable PDF returns NULL. Never raises.",
+        "vgi.doc_md": "# Read PDF Document Metadata\n\nExtracts the document information dictionary (Title, Author, Producer, dates, ...) as a `MAP(VARCHAR, VARCHAR)`.\n\n## Example\n\nIndex a single field with `pdf.main.pdf_metadata('report.pdf')['Title']`, or expand the whole map with `map_entries(...)` to list every key/value pair. Typical keys are `Title`, `Author`, `Subject`, `Creator`, `Producer`, `CreationDate`, and `ModDate`. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nAvailable keys vary by the tool that produced the PDF. Returns `NULL` for a NULL input or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Title from a sample PDF's metadata (returns 'Quarterly Report')\",\"sql\":\"SELECT pdf.main.pdf_metadata((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/meta.pdf')))['Title'] AS title\"},{\"description\":\"Author from PDF bytes' metadata (NULL for non-PDF bytes)\",\"sql\":\"SELECT pdf.main.pdf_metadata('not-a-pdf'::BLOB)['Author'] AS author\"}]",
+        "vgi.keywords": "[\"metadata\",\"document info\",\"title\",\"author\",\"producer\",\"creator\",\"subject\",\"creation date\",\"properties\"]",
+        "vgi.title": "Read PDF Document Metadata"
+      },
+      "MAP(VARCHAR, VARCHAR)",
+      [
+        "pdf"
+      ],
+      [
+        "BLOB"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22599,
+      [
+        "SELECT pdf.main.pdf_metadata('not-a-pdf'::BLOB)['Author'] AS author"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "metadata"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "render_page",
+      null,
+      "scalar",
+      "Render one (1-based) page of a PDF (VARCHAR path) to a PNG BLOB (default 150 DPI)",
+      null,
+      {
+        "vgi.category": "Rendering",
+        "vgi.doc_llm": "# render_page\n\nRasterize **one (1-based) page** of a PDF to a **PNG image** returned as a `BLOB`. Signature `render_page(pdf, page[, dpi])`: `pdf` is a `VARCHAR` path or a `BLOB`, `page` is the 1-based page number, and the optional `dpi` sets the resolution (default 150, capped at 300).\n\nUse it to thumbnail PDFs, preview a page, or feed a page image to a vision model.\n\n**Bounds & edge cases:** the output bitmap area is capped (an enormous page renders at reduced scale rather than exhausting memory); a NULL input, NULL page, out-of-range page, or unreadable PDF returns NULL. Never raises and never OOMs.",
+        "vgi.doc_md": "# Render PDF Page to Image\n\nRasterizes a single PDF page to a PNG image, returned as a `BLOB`.\n\n## Example\n\nCalling `pdf.main.render_page('report.pdf', 1)` renders the first page at the default 150 DPI and hands back the raw PNG bytes; pass a third argument to override the resolution, as in `pdf.main.render_page('report.pdf', 1, 72)` for a lighter 72-DPI thumbnail. The `page` argument is 1-based and `dpi` is clamped to 300. The input `pdf` is a `VARCHAR` filesystem path or a `BLOB` of raw bytes. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nThe rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL input, an out-of-range page, or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Render page 1 to a PNG and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) AS png_bytes\"},{\"description\":\"Render page 1 at 72 DPI and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1, 72)) AS png_bytes\"},{\"description\":\"Rendering non-PDF bytes yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable\"},{\"description\":\"Rendering non-PDF bytes at 72 DPI yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable\"}]",
+        "vgi.keywords": "[\"render\",\"render page\",\"png\",\"image\",\"rasterize\",\"thumbnail\",\"preview\",\"screenshot\",\"dpi\",\"bitmap\"]",
+        "vgi.title": "Render PDF Page to Image"
+      },
+      "BLOB",
+      [
+        "pdf",
+        "page"
+      ],
+      [
+        "VARCHAR",
+        "INTEGER"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22600,
+      [
+        "SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) AS png_bytes"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "render"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "render_page",
+      null,
+      "scalar",
+      "Render one page of a PDF (VARCHAR path) to a PNG BLOB at a given DPI (capped at 300)",
+      null,
+      {
+        "vgi.category": "Rendering",
+        "vgi.doc_llm": "# render_page\n\nRasterize **one (1-based) page** of a PDF to a **PNG image** returned as a `BLOB`. Signature `render_page(pdf, page[, dpi])`: `pdf` is a `VARCHAR` path or a `BLOB`, `page` is the 1-based page number, and the optional `dpi` sets the resolution (default 150, capped at 300).\n\nUse it to thumbnail PDFs, preview a page, or feed a page image to a vision model.\n\n**Bounds & edge cases:** the output bitmap area is capped (an enormous page renders at reduced scale rather than exhausting memory); a NULL input, NULL page, out-of-range page, or unreadable PDF returns NULL. Never raises and never OOMs.",
+        "vgi.doc_md": "# Render PDF Page to Image\n\nRasterizes a single PDF page to a PNG image, returned as a `BLOB`.\n\n## Example\n\nCalling `pdf.main.render_page('report.pdf', 1)` renders the first page at the default 150 DPI and hands back the raw PNG bytes; pass a third argument to override the resolution, as in `pdf.main.render_page('report.pdf', 1, 72)` for a lighter 72-DPI thumbnail. The `page` argument is 1-based and `dpi` is clamped to 300. The input `pdf` is a `VARCHAR` filesystem path or a `BLOB` of raw bytes. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nThe rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL input, an out-of-range page, or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Render page 1 to a PNG and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) AS png_bytes\"},{\"description\":\"Render page 1 at 72 DPI and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1, 72)) AS png_bytes\"},{\"description\":\"Rendering non-PDF bytes yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable\"},{\"description\":\"Rendering non-PDF bytes at 72 DPI yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable\"}]",
+        "vgi.keywords": "[\"render\",\"render page\",\"png\",\"image\",\"rasterize\",\"thumbnail\",\"preview\",\"screenshot\",\"dpi\",\"bitmap\"]",
+        "vgi.title": "Render PDF Page to Image"
+      },
+      "BLOB",
+      [
+        "pdf",
+        "page",
+        "dpi"
+      ],
+      [
+        "VARCHAR",
+        "INTEGER",
+        "INTEGER"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22600,
+      [
+        "SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1, 72)) AS png_bytes"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "render"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "render_page",
+      null,
+      "scalar",
+      "Render one (1-based) page of a PDF (BLOB bytes) to a PNG BLOB (default 150 DPI)",
+      null,
+      {
+        "vgi.category": "Rendering",
+        "vgi.doc_llm": "# render_page\n\nRasterize **one (1-based) page** of a PDF to a **PNG image** returned as a `BLOB`. Signature `render_page(pdf, page[, dpi])`: `pdf` is a `VARCHAR` path or a `BLOB`, `page` is the 1-based page number, and the optional `dpi` sets the resolution (default 150, capped at 300).\n\nUse it to thumbnail PDFs, preview a page, or feed a page image to a vision model.\n\n**Bounds & edge cases:** the output bitmap area is capped (an enormous page renders at reduced scale rather than exhausting memory); a NULL input, NULL page, out-of-range page, or unreadable PDF returns NULL. Never raises and never OOMs.",
+        "vgi.doc_md": "# Render PDF Page to Image\n\nRasterizes a single PDF page to a PNG image, returned as a `BLOB`.\n\n## Example\n\nCalling `pdf.main.render_page('report.pdf', 1)` renders the first page at the default 150 DPI and hands back the raw PNG bytes; pass a third argument to override the resolution, as in `pdf.main.render_page('report.pdf', 1, 72)` for a lighter 72-DPI thumbnail. The `page` argument is 1-based and `dpi` is clamped to 300. The input `pdf` is a `VARCHAR` filesystem path or a `BLOB` of raw bytes. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nThe rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL input, an out-of-range page, or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Render page 1 to a PNG and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) AS png_bytes\"},{\"description\":\"Render page 1 at 72 DPI and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1, 72)) AS png_bytes\"},{\"description\":\"Rendering non-PDF bytes yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable\"},{\"description\":\"Rendering non-PDF bytes at 72 DPI yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable\"}]",
+        "vgi.keywords": "[\"render\",\"render page\",\"png\",\"image\",\"rasterize\",\"thumbnail\",\"preview\",\"screenshot\",\"dpi\",\"bitmap\"]",
+        "vgi.title": "Render PDF Page to Image"
+      },
+      "BLOB",
+      [
+        "pdf",
+        "page"
+      ],
+      [
+        "BLOB",
+        "INTEGER"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22600,
+      [
+        "SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "render"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "render_page",
+      null,
+      "scalar",
+      "Render one page of a PDF (BLOB bytes) to a PNG BLOB at a given DPI (capped at 300)",
+      null,
+      {
+        "vgi.category": "Rendering",
+        "vgi.doc_llm": "# render_page\n\nRasterize **one (1-based) page** of a PDF to a **PNG image** returned as a `BLOB`. Signature `render_page(pdf, page[, dpi])`: `pdf` is a `VARCHAR` path or a `BLOB`, `page` is the 1-based page number, and the optional `dpi` sets the resolution (default 150, capped at 300).\n\nUse it to thumbnail PDFs, preview a page, or feed a page image to a vision model.\n\n**Bounds & edge cases:** the output bitmap area is capped (an enormous page renders at reduced scale rather than exhausting memory); a NULL input, NULL page, out-of-range page, or unreadable PDF returns NULL. Never raises and never OOMs.",
+        "vgi.doc_md": "# Render PDF Page to Image\n\nRasterizes a single PDF page to a PNG image, returned as a `BLOB`.\n\n## Example\n\nCalling `pdf.main.render_page('report.pdf', 1)` renders the first page at the default 150 DPI and hands back the raw PNG bytes; pass a third argument to override the resolution, as in `pdf.main.render_page('report.pdf', 1, 72)` for a lighter 72-DPI thumbnail. The `page` argument is 1-based and `dpi` is clamped to 300. The input `pdf` is a `VARCHAR` filesystem path or a `BLOB` of raw bytes. Ready-to-run SQL lives in the example queries.\n\n## Notes\n\nThe rendered bitmap area is capped to avoid runaway memory use. Returns `NULL` for a NULL input, an out-of-range page, or an unreadable document.",
+        "vgi.example_queries": "[{\"description\":\"Render page 1 to a PNG and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1)) AS png_bytes\"},{\"description\":\"Render page 1 at 72 DPI and report its byte size\",\"sql\":\"SELECT octet_length(pdf.main.render_page((SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/multipage.pdf')), 1, 72)) AS png_bytes\"},{\"description\":\"Rendering non-PDF bytes yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1) IS NULL AS unreadable\"},{\"description\":\"Rendering non-PDF bytes at 72 DPI yields NULL rather than an error\",\"sql\":\"SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable\"}]",
+        "vgi.keywords": "[\"render\",\"render page\",\"png\",\"image\",\"rasterize\",\"thumbnail\",\"preview\",\"screenshot\",\"dpi\",\"bitmap\"]",
+        "vgi.title": "Render PDF Page to Image"
+      },
+      "BLOB",
+      [
+        "pdf",
+        "page",
+        "dpi"
+      ],
+      [
+        "BLOB",
+        "INTEGER",
+        "INTEGER"
+      ],
+      null,
+      null,
+      false,
+      true,
+      null,
+      22600,
+      [
+        "SELECT pdf.main.render_page('not-a-pdf'::BLOB, 1, 72) IS NULL AS unreadable"
+      ],
+      "CONSISTENT",
+      [
+        "pdf",
+        "render"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "tables",
+      null,
+      "table",
+      "Long-format table cells (page, table_index, row, col, value) of a PDF (VARCHAR path or BLOB bytes)",
+      null,
+      {
+        "vgi.category": "Content",
+        "vgi.doc_llm": "# tables\n\nTable function that detects tables in a PDF and returns them in **long (tidy) format -- one row per cell**: `page` (1-based), `table_index` (0-based ordinal of the table on the page), `row` and `col` (0-based indices within the table), and `value` (the cell text, NULL when empty). Call by keyword: `tables(pdf := '...')`, with the optional `page := N` filter. `pdf` is a `VARCHAR` path or a `BLOB`.\n\nUse it to mine numeric/tabular data out of reports and statements. Pivot back to a grid with conditional aggregation on `row`/`col`, or filter a single table with `table_index`.\n\n**Gotcha:** `row` is a SQL keyword -- quote it as `\"row\"`. **Edge cases:** a page with no detectable table contributes no rows; a NULL `pdf` raises a clean argument error; an unreadable PDF raises a clean DuckDB error. Output streams in bounded slices.",
+        "vgi.doc_md": "# Extract PDF Table Cells\n\nDetects tables in a PDF and returns their cells in long (one-row-per-cell) format.\n\n## Example\n\nCalling `pdf.main.tables(pdf := 'report.pdf')` yields one row per cell, with `page`, `table_index`, `row`, `col`, and `value`. Order by `page, table_index, \"row\", col` to read cells in layout order, and pivot back to a grid with conditional aggregation over `row`/`col`. Ready-to-run SQL lives in the example queries.\n\n## Columns\n\n| column | type | description |\n|---|---|---|\n| `page` | INTEGER | 1-based page number the cell is on. |\n| `table_index` | INTEGER | 0-based table ordinal within the page. |\n| `row` | INTEGER | 0-based row index in the table (SQL keyword: quote as `\"row\"`). |\n| `col` | INTEGER | 0-based column index within the table. |\n| `value` | VARCHAR | Cell text (NULL for an empty/missing cell). |\n\n## Notes\n\nThe `row` column is a SQL keyword -- quote it as `\"row\"`. Pages without a detectable table produce no rows. Call by keyword (`pdf := ...`, optional `page := N`).",
+        "vgi.example_queries": "[{\"description\":\"Locate each table cell on the page: join tables() cells to words() boxes on matching text (single-word cells); reads the repo's committed table.pdf fixture by path\",\"sql\":\"SELECT t.\\\"row\\\", t.col, t.value, w.x0, round(w.top, 1) AS top FROM pdf.main.tables(pdf := 'test/sql/data/table.pdf') AS t JOIN pdf.main.words(pdf := 'test/sql/data/table.pdf') AS w ON w.page = t.page AND w.text = t.value ORDER BY t.page, t.table_index, t.\\\"row\\\", t.col\"}]",
+        "vgi.executable_examples": "[{\"description\":\"Table cells in layout order (long format)\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'))\",\"SELECT page, table_index, \\\"row\\\", col, value FROM pdf.main.tables(pdf := getvariable('doc')) ORDER BY page, table_index, \\\"row\\\", col LIMIT 8\"]},{\"description\":\"Count the detected table cells on page 1\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'))\",\"SELECT count(*) AS cells FROM pdf.main.tables(pdf := getvariable('doc'), page := 1)\"]},{\"description\":\"Locate each table cell on the page: join tables() cells to words() boxes on matching text (single-word cells)\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/table.pdf'))\",\"SELECT t.\\\"row\\\", t.col, t.value, w.x0, round(w.top, 1) AS top FROM pdf.main.tables(pdf := getvariable('doc')) AS t JOIN pdf.main.words(pdf := getvariable('doc')) AS w ON w.page = t.page AND w.text = t.value ORDER BY t.page, t.table_index, t.\\\"row\\\", t.col\"]}]",
+        "vgi.keywords": "[\"tables\",\"table cells\",\"extract table\",\"tabular\",\"cells\",\"rows\",\"columns\",\"long format\",\"grid\",\"spreadsheet\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"page\", \"type\": \"INTEGER\", \"description\": \"1-based page number the cell is on.\"}, {\"name\": \"table_index\", \"type\": \"INTEGER\", \"description\": \"0-based table ordinal within the page.\"}, {\"name\": \"row\", \"type\": \"INTEGER\", \"description\": \"0-based row index in the table (SQL keyword: quote as \\\"row\\\").\"}, {\"name\": \"col\", \"type\": \"INTEGER\", \"description\": \"0-based column index within the table.\"}, {\"name\": \"value\", \"type\": \"VARCHAR\", \"description\": \"Cell text (NULL for an empty/missing cell).\"}]",
+        "vgi.title": "Extract PDF Table Cells"
+      },
+      null,
+      [
+        "pdf",
+        "page"
+      ],
+      [
+        "ANY",
+        "INTEGER"
+      ],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22602,
+      [],
+      null,
+      [
+        "pdf",
+        "tables"
+      ]
+    ],
+    [
+      "pdf",
+      "22592",
+      "main",
+      "words",
+      null,
+      "table",
+      "Per-word bounding boxes (page, text, x0, top, x1, bottom) of a PDF (VARCHAR path or BLOB bytes)",
+      null,
+      {
+        "vgi.category": "Content",
+        "vgi.doc_llm": "# words\n\nTable function returning **one row per word** in a PDF, with each word's text and its bounding box: `page` (1-based), `text`, and the box edges `x0`/`top`/`x1`/`bottom` in PDF points (origin at the top-left). Call by keyword: `words(pdf := '...')`, with the optional `page := N` filter to restrict to one page. `pdf` is a `VARCHAR` path or a `BLOB`.\n\nUse it to locate text by coordinate, reconstruct reading order (`ORDER BY top, x0`), find where a keyword appears on a page, or build a spatial layout index.\n\n**Edge cases:** a scanned/image-only page yields no words; a NULL `pdf` raises a clean argument error; an unreadable PDF raises a clean DuckDB error. Output streams in bounded slices, so pages with thousands of words page safely over every transport.",
+        "vgi.doc_md": "# Extract PDF Word Boxes\n\nReturns every word in a PDF together with its bounding box, one row per word.\n\n## Example\n\nCalling `pdf.main.words(pdf := 'invoice.pdf')` returns one row per word -- its `text` and the box edges `x0`, `top`, `x1`, `bottom` (PDF points, origin top-left). Order by `top` then `x0` to recover reading order, or pass `page := 1` to restrict to the first page. Ready-to-run SQL lives in the example queries.\n\n## Columns\n\n| column | type | description |\n|---|---|---|\n| `page` | INTEGER | 1-based page number the word is on. |\n| `text` | VARCHAR | The word's text. |\n| `x0` | DOUBLE | Left edge, in PDF points from the left. |\n| `top` | DOUBLE | Top edge, in PDF points from the top. |\n| `x1` | DOUBLE | Right edge, in PDF points from the left. |\n| `bottom` | DOUBLE | Bottom edge, in PDF points from the top. |\n\n## Notes\n\nCoordinates are in PDF points with the origin at the top-left. Image-only (scanned) pages produce no words -- this reads the text layer, it does not OCR. Call by keyword (`pdf := ...`, optional `page := N`).",
+        "vgi.example_queries": "[{\"description\":\"Find the words in each page's header band (top 10% of the page height), joining words() to pages() for the height; reads the repo's committed words.pdf fixture by path\",\"sql\":\"SELECT w.page, w.text, round(w.top / p.height, 3) AS top_fraction FROM pdf.main.words(pdf := 'test/sql/data/words.pdf') AS w JOIN pdf.main.pages(pdf := 'test/sql/data/words.pdf') AS p ON p.page = w.page WHERE w.top < 0.1 * p.height ORDER BY w.page, w.top, w.x0\"}]",
+        "vgi.executable_examples": "[{\"description\":\"First few word boxes in reading order\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/words.pdf'))\",\"SELECT page, text, x0, top FROM pdf.main.words(pdf := getvariable('doc')) ORDER BY top, x0 LIMIT 5\"]},{\"description\":\"Count the words on page 1\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/words.pdf'))\",\"SELECT count(*) AS words_on_page_1 FROM pdf.main.words(pdf := getvariable('doc'), page := 1)\"]},{\"description\":\"Find the words in each page's header band (top 10% of the page height), joining words() to pages() for the height\",\"sql\":[\"SET VARIABLE doc = (SELECT content FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/words.pdf'))\",\"SELECT w.page, w.text, round(w.top / p.height, 3) AS top_fraction FROM pdf.main.words(pdf := getvariable('doc')) AS w JOIN pdf.main.pages(pdf := getvariable('doc')) AS p ON p.page = w.page WHERE w.top < 0.1 * p.height ORDER BY w.page, w.top, w.x0\"]}]",
+        "vgi.keywords": "[\"words\",\"word boxes\",\"bounding box\",\"coordinates\",\"text position\",\"layout\",\"x0\",\"top\",\"reading order\"]",
+        "vgi.result_columns_schema": "[{\"name\": \"page\", \"type\": \"INTEGER\", \"description\": \"1-based page number the word is on.\"}, {\"name\": \"text\", \"type\": \"VARCHAR\", \"description\": \"The word's text.\"}, {\"name\": \"x0\", \"type\": \"DOUBLE\", \"description\": \"Left edge, in PDF points from the left.\"}, {\"name\": \"top\", \"type\": \"DOUBLE\", \"description\": \"Top edge, in PDF points from the top.\"}, {\"name\": \"x1\", \"type\": \"DOUBLE\", \"description\": \"Right edge, in PDF points from the left.\"}, {\"name\": \"bottom\", \"type\": \"DOUBLE\", \"description\": \"Bottom edge, in PDF points from the top.\"}]",
+        "vgi.title": "Extract PDF Word Boxes"
+      },
+      null,
+      [
+        "pdf",
+        "page"
+      ],
+      [
+        "ANY",
+        "INTEGER"
+      ],
+      null,
+      null,
+      null,
+      true,
+      null,
+      22603,
+      [],
+      null,
+      [
+        "pdf",
+        "words"
+      ]
+    ]
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "query": "SELECT * FROM duckdb_tables() WHERE database_name='pdf'",
+  "captured_at": "2026-11-14T23:19:59.196639+00:00",
+  "columns": [
+    "database_name",
+    "database_oid",
+    "schema_name",
+    "schema_oid",
+    "table_name",
+    "table_oid",
+    "comment",
+    "tags",
+    "internal",
+    "temporary",
+    "has_primary_key",
+    "estimated_size",
+    "column_count",
+    "index_count",
+    "check_constraint_count",
+    "sql"
+  ],
+  "rows": []
+}
