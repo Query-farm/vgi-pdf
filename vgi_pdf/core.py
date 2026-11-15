@@ -46,7 +46,6 @@ from pdfplumber.pdf import PDF as PdfPlumberDocument
 __all__ = [
     "DEFAULT_DPI",
     "FIXTURES_URL",
-    "LOCAL_FIXTURES_DIR",
     "MAX_RENDER_DPI",
     "MAX_RENDER_PIXELS",
     "PdfError",
@@ -79,11 +78,6 @@ MAX_RENDER_PIXELS = 25_000_000
 # example runs from any directory with no repo checkout. The worker itself still
 # never fetches URLs.
 FIXTURES_URL = "https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data"
-
-# The same fixtures by path, relative to the repo root (the worker's working
-# directory under CI, ``make`` and vgi-lint). Used only where an example must be
-# one statement AND reach a table function, whose ``pdf :=`` must be a constant.
-LOCAL_FIXTURES_DIR = "test/sql/data"
 
 
 def fixture_blob(name: str) -> str:

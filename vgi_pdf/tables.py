@@ -51,7 +51,7 @@ from vgi_rpc import ArrowSerializableDataclass
 from vgi_rpc.rpc import OutputCollector
 
 from . import core
-from .core import LOCAL_FIXTURES_DIR, PdfSource, fixture_script, fixture_set
+from .core import PdfSource, fixture_script, fixture_set
 from .meta import object_tags
 from .schema_utils import field
 
@@ -77,11 +77,13 @@ def _executable_tag(entries: list[tuple[str, str, str]]) -> str:
 # ---------------------------------------------------------------------------
 # Composed examples: one query combining two of this worker's objects. Each is a
 # (description, fixture, query) triple defined ONCE here and referenced from
-# every carrier -- the driving table function's ``vgi.example_queries`` (what the
-# vgi-lint agent simulator shows; rendered as one statement over the fixture's
-# path, see ``_local_example_query``), the schema-level list in ``worker.py``, and,
-# when deterministic, ``vgi.executable_examples``. ``pdf :=`` must be a constant,
-# so the script forms read the fixture into ``doc`` once and every call reuses it.
+# every carrier -- the driving table function's ``vgi.executable_examples`` and the
+# schema-level list in ``worker.py``. ``pdf :=`` must be a constant (DuckDB forbids a
+# subquery or lateral column there), so every form reads the fixture into ``doc``
+# over HTTPS once and every call reuses it. There is deliberately no single-statement
+# per-object ``vgi.example_queries`` entry for the table functions: the only
+# one-statement form would name a repo-relative fixture path, which returns nothing
+# for anyone running the worker outside this checkout (VGI516/VGI913).
 # ---------------------------------------------------------------------------
 
 PAGE_THUMBNAILS_EXAMPLE = (
@@ -122,31 +124,6 @@ def example_query(entry: tuple[str, str, str]) -> dict[str, str]:
     return {"description": description, "sql": fixture_script(fixture, query)}
 
 
-def _local_example_query(entry: tuple[str, str, str]) -> dict[str, str]:
-    """Render a triple as a ONE-statement entry reading the committed fixture by path.
-
-    An object's ``vgi.example_queries`` entry is a single SQL string, and vgi-lint's
-    default ``explain`` mode runs it as ``EXPLAIN <sql>``: in a two-statement
-    ``SET VARIABLE doc = ...; SELECT ...`` script only the ``SET`` is EXPLAINed
-    (never executed), so the ``SELECT`` sees ``getvariable('doc')`` = NULL and the
-    table function rejects it. A table function's ``pdf :=`` cannot be a subquery
-    or a lateral column either, so the only single-statement form is a constant
-    path. These entries name the committed fixture relative to the worker's
-    working directory (the repo root, where CI and ``make`` launch it).
-    """
-    description, fixture, query = entry
-    path = f"'{LOCAL_FIXTURES_DIR}/{fixture}'"
-    return {
-        "description": f"{description}; reads the repo's committed {fixture} fixture by path",
-        "sql": query.replace("getvariable('doc')", path),
-    }
-
-
-def _example_queries_tag(entries: list[tuple[str, str, str]]) -> str:
-    """Serialize triples into an object's ``vgi.example_queries`` tag (single statements)."""
-    return json.dumps([_local_example_query(e) for e in entries], separators=(",", ":"))
-
-
 _PAGES_EXECUTABLE_EXAMPLES = _executable_tag(
     [
         (
@@ -159,6 +136,7 @@ _PAGES_EXECUTABLE_EXAMPLES = _executable_tag(
             "multipage.pdf",
             "SELECT count(*) AS landscape_pages FROM pdf.main.pages(pdf := getvariable('doc')) WHERE width > height",
         ),
+        PAGE_THUMBNAILS_EXAMPLE,
     ]
 )
 _WORDS_EXECUTABLE_EXAMPLES = _executable_tag(
@@ -411,7 +389,6 @@ _PAGES_TAGS = {
     ),
     "vgi.result_columns_schema": _PAGES_COLUMNS_SCHEMA,
     "vgi.executable_examples": _PAGES_EXECUTABLE_EXAMPLES,
-    "vgi.example_queries": _example_queries_tag([PAGE_THUMBNAILS_EXAMPLE]),
 }
 
 
@@ -556,7 +533,6 @@ _WORDS_TAGS = {
     ),
     "vgi.result_columns_schema": _WORDS_COLUMNS_SCHEMA,
     "vgi.executable_examples": _WORDS_EXECUTABLE_EXAMPLES,
-    "vgi.example_queries": _example_queries_tag([HEADER_BAND_WORDS_EXAMPLE]),
 }
 
 
@@ -709,7 +685,6 @@ _TABLES_TAGS = {
     ),
     "vgi.result_columns_schema": _TABLES_COLUMNS_SCHEMA,
     "vgi.executable_examples": _TABLES_EXECUTABLE_EXAMPLES,
-    "vgi.example_queries": _example_queries_tag([TABLE_CELL_POSITIONS_EXAMPLE]),
 }
 
 

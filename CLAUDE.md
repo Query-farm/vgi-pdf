@@ -195,4 +195,7 @@ constant (no subquery allowed), so their examples are two-statement
 `SET VARIABLE doc = ...` + `pdf := getvariable('doc')` lists in
 `vgi.executable_examples`; the composed examples (`tables.COMPOSED_EXAMPLES`,
 `scalars.PDF_INVENTORY_EXAMPLE`) also ride in `vgi.example_queries` as one
-`;\n`-joined script string. Keep the URL on a tag, never `main`.
+`;\n`-joined script string at schema level. The table functions carry no
+per-object `vgi.example_queries`: the only single-statement form would name a
+repo-relative fixture path, which returns nothing outside this checkout (vgi-lint
+VGI516/VGI913). Keep the URL on a tag, never `main`.
