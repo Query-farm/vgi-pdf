@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "vgi-python>=0.52.0",
     "pdfplumber>=0.11",
@@ -90,7 +90,7 @@ packages = ["vgi_pdf"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py314"
 extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
@@ -117,7 +117,7 @@ skip_checking_raises = true
 allow_init_docstring = true
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true

@@ -7,7 +7,7 @@
 # the PDF path/bytes handed to it per query. Backed by permissive libraries only
 # (pdfplumber MIT, pypdfium2 Apache-2.0, pikepdf MPL-2.0, Pillow MIT) — never PyMuPDF.
 # syntax=docker/dockerfile:1
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ARG VERSION=0.0.0
 ARG GIT_COMMIT=unknown

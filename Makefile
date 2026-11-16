@@ -14,7 +14,7 @@
 # extensions installed under the real $HOME (haybarn-unittest 2.0 isolates it).
 
 # Worker command DuckDB uses for ATTACH (overridable).
-WORKER_STDIO    ?= uv run --python 3.13 pdf_worker.py
+WORKER_STDIO    ?= uv run --python 3.14 pdf_worker.py
 
 # haybarn-unittest lives in the uv tools bin; keep it on PATH.
 HAYBARN_BIN     ?= $(HOME)/.local/bin
