@@ -23,7 +23,7 @@ Google PDFium), and [`pikepdf`](https://pypi.org/project/pikepdf/) (MPL-2.0).
 
 ```sql
 INSTALL vgi FROM community; LOAD vgi;
-ATTACH 'pdf' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.4.2 vgi-pdf-worker');
+ATTACH 'pdf' (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.5.0 vgi-pdf-worker');
 
 -- Scalars: one PDF in, one value out
 SELECT pdf.page_count('report.pdf');                 -- 3
@@ -48,6 +48,8 @@ SELECT pdf.page_count(content) FROM read_blob('*.pdf');       -- bytes
 SELECT pdf.page_count(filename) FROM glob('*.pdf') t(filename); -- path
 ```
 
+vgi-pdf 0.5.0 speaks VGI protocol 3.4, so it needs Haybarn 2.0.1 or newer (Haybarn 2.0.0 loads a 3.3 `vgi` extension that cannot attach it).
+
 ## Quick start
 
 The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from a tagged release on GitHub. `uvx` builds an isolated environment on the first ATTACH and reuses it afterwards:
@@ -56,7 +58,7 @@ The worker isn't on PyPI; [uv](https://docs.astral.sh/uv/) runs it straight from
 INSTALL vgi FROM community;
 LOAD vgi;
 
-ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.4.2 vgi-pdf-worker');
+ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'uvx --from git+https://github.com/Query-farm/vgi-pdf@v0.5.0 vgi-pdf-worker');
 
 -- Count the pages in a PDF (read_blob reaches a local path, a glob, or an
 -- https:// URL like this committed sample).
@@ -68,14 +70,14 @@ SELECT pdf.main.is_encrypted(content)
 FROM read_blob('https://raw.githubusercontent.com/Query-farm/vgi-pdf/v0.2.0/test/sql/data/form.pdf');        -- false
 ```
 
-Change `@v0.4.2` to move to a newer release.
+Change `@v0.5.0` to move to a newer release.
 
 ### Other ways to run it
 
 - **Docker** (the image bundles the worker and its dependencies):
 
   ```sql
-  ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-pdf:0.4.2');
+  ATTACH 'pdf' AS pdf (TYPE vgi, LOCATION 'docker://ghcr.io/query-farm/vgi-pdf:0.5.0');
   ```
 
 - **From a local checkout** (`git clone https://github.com/Query-farm/vgi-pdf`), point `LOCATION` at `uv run --project /path/to/vgi-pdf vgi-pdf-worker`.
